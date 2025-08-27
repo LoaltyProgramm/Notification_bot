@@ -49,15 +49,55 @@ func main() {
 
 				switch update.CallbackQuery.Data {
 				case "create_reminder":
+					deleteMessage := telebotapi.NewDeleteMessage(
+						update.CallbackQuery.Message.Chat.ID, 
+						update.CallbackQuery.Message.MessageID)
+					if _, err := bot.Request(deleteMessage); err != nil {
+						log.Println(err)
+					}
+
 					State = "registred_text"
 				case "back":
+					deleteMessage := telebotapi.NewDeleteMessage(
+						update.CallbackQuery.Message.Chat.ID, 
+						update.CallbackQuery.Message.MessageID)
+					if _, err := bot.Request(deleteMessage); err != nil {
+						log.Println(err)
+					}
+
 					State = "main_menu"
 				case "success_data":
+					deleteMessage := telebotapi.NewDeleteMessage(
+						update.CallbackQuery.Message.Chat.ID, 
+						update.CallbackQuery.Message.MessageID)
+					if _, err := bot.Request(deleteMessage); err != nil {
+						log.Println(err)
+					}
+
 					msg := telebotapi.NewMessage(chatID, "Напоминание добавлено✅")
+					State = "main_menu"
 					if _, err := bot.Send(msg); err != nil {
 						log.Println(err)
 						continue
 					}
+				case "redirect_main":
+					deleteMessage := telebotapi.NewDeleteMessage(
+						update.CallbackQuery.Message.Chat.ID, 
+						update.CallbackQuery.Message.MessageID)
+					if _, err := bot.Request(deleteMessage); err != nil {
+						log.Println(err)
+					}
+
+					State = "main_menu"
+				case "redirect_registred_text":
+					deleteMessage := telebotapi.NewDeleteMessage(
+						update.CallbackQuery.Message.Chat.ID, 
+						update.CallbackQuery.Message.MessageID)
+					if _, err := bot.Request(deleteMessage); err != nil {
+						log.Println(err)
+					}
+
+					State = "registred_text"
 				}
 
 			}
@@ -92,27 +132,41 @@ func main() {
 				log.Println(err)
 				continue
 			}
+			
 		case "registred_text":
 			msg := telebotapi.NewMessage(chatID, "*Введите текст напоминания✍️*")
 			msg.ParseMode = "MarkDownV2"
+			msg.ReplyMarkup = telebotapi.NewInlineKeyboardMarkup(
+				telebotapi.NewInlineKeyboardRow(
+					telebotapi.NewInlineKeyboardButtonData("Назад", "redirect_main"),
+				),
+			)
 			if _, err := bot.Send(msg); err != nil {
 				log.Println(err)
 				continue
 			}
 			State = "registred_interval"
+
 		case "registred_interval":
 			UserText = update.Message.Text
 			msg := telebotapi.NewMessage(chatID, "*Введите интервал напоминания⏰*")
 			msg.ParseMode = "MarkDownV2"
+			msg.ReplyMarkup = telebotapi.NewInlineKeyboardMarkup(
+				telebotapi.NewInlineKeyboardRow(
+					telebotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main"),
+					telebotapi.NewInlineKeyboardButtonData("Назал к тексту", "redirect_registred_text"),
+				),
+			)
 			if _, err := bot.Send(msg); err != nil {
 				log.Println(err)
 				continue
 			}
 			State = "registred_final"
+
 		case "registred_final":
 			Interval = update.Message.Text
-			msg := telebotapi.NewMessage(chatID, fmt.Sprintf("*Вы подтверждаете добавление данного напоминания*?\nТекст:\n%s\nИнтервал:\n%s", UserText, Interval))
-			msg.ParseMode = "MarkDownV2"
+			msg := telebotapi.NewMessage(chatID, fmt.Sprintf("<b>Вы подтверждаете добавление данного напоминания?</b>\nТекст:\n<code>%s</code>\nИнтервал:\n%s", UserText, Interval))
+			msg.ParseMode = "HTML"
 			msg.ReplyMarkup = telebotapi.NewInlineKeyboardMarkup(
 				telebotapi.NewInlineKeyboardRow(
 					telebotapi.NewInlineKeyboardButtonData("Подтвержаю", "success_data"),
