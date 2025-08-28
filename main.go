@@ -57,15 +57,23 @@ func main() {
 			switch update.Message.Command() {
 			case "start":
 				msg := telebotapi.NewMessage(chatID, "Привет👋\nДанный бот позволяет добавить напоминания к группе")
-				session.State = "main_menu"
-				bot.Send(msg)
+				
+    session.State = "main_menu"
+				
+    if _, err := bot.Send(msg); err != nil {
+      log.Println(err)
+      continue
+    }
 			}
 		}
 
 		// обработка коллбеков
 		if update.CallbackQuery != nil {
 			callback := telebotapi.NewCallback(update.CallbackQuery.ID, "")
-			bot.Send(callback)
+			if _, err := bot.Send(callback); err != nil {
+      log.Println(err)
+      continue
+   }
 
 			switch update.CallbackQuery.Data {
 			case "create_reminder":
