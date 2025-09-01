@@ -57,39 +57,39 @@ func main() {
 			switch update.Message.Command() {
 			case "start":
 				msg := telebotapi.NewMessage(chatID, "Привет👋\nДанный бот позволяет добавить напоминания к группе")
-				
-    session.State = "main_menu"
-				
-    if _, err := bot.Send(msg); err != nil {
-      log.Println(err)
-      continue
-    }
+
+				session.State = "main_menu"
+				if _, err := bot.Send(msg); err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 		}
 
 		// обработка коллбеков
 		if update.CallbackQuery != nil {
 			callback := telebotapi.NewCallback(update.CallbackQuery.ID, "")
-			if _, err := bot.Send(callback); err != nil {
-      log.Println(err)
-      continue
-   }
+			if _, err := bot.Request(callback); err != nil {
+				log.Println(err)
+				continue
+			}
+			bot.Send(callback)
 
 			switch update.CallbackQuery.Data {
 			case "create_reminder":
 				deleteMsg := telebotapi.NewDeleteMessage(
-					update.CallbackQuery.Message.Chat.ID, 
+					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
 				)
 				if _, err := bot.Request(deleteMsg); err != nil {
 					log.Println(err)
 					continue
 				}
-				
+
 				session.State = "registred_text"
 			case "back":
 				deleteMsg := telebotapi.NewDeleteMessage(
-					update.CallbackQuery.Message.Chat.ID, 
+					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
 				)
 				if _, err := bot.Request(deleteMsg); err != nil {
@@ -100,14 +100,14 @@ func main() {
 				session.State = "main_menu"
 			case "success_data":
 				deleteMsg := telebotapi.NewDeleteMessage(
-					update.CallbackQuery.Message.Chat.ID, 
+					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
 				)
 				if _, err := bot.Request(deleteMsg); err != nil {
 					log.Println(err)
 					continue
 				}
-				
+
 				session.State = "main_menu"
 				msg := telebotapi.NewMessage(chatID, "Напоминание добавлено✅")
 				if _, err := bot.Send(msg); err != nil {
@@ -116,7 +116,7 @@ func main() {
 				}
 			case "redirect_main_menu":
 				deleteMsg := telebotapi.NewDeleteMessage(
-					update.CallbackQuery.Message.Chat.ID, 
+					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
 				)
 				if _, err := bot.Request(deleteMsg); err != nil {
@@ -127,7 +127,7 @@ func main() {
 				session.State = "main_menu"
 			case "redirect_registred_text":
 				deleteMsg := telebotapi.NewDeleteMessage(
-					update.CallbackQuery.Message.Chat.ID, 
+					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
 				)
 				if _, err := bot.Request(deleteMsg); err != nil {
@@ -163,7 +163,7 @@ func main() {
 				),
 			)
 			if _, err := bot.Send(msg); err != nil {
-				log.Println(err)
+				log.Println("ERROR - ", err)
 				continue
 			}
 			session.State = "registred_interval"
@@ -187,13 +187,12 @@ func main() {
 
 			session.State = "registred_final"
 
-
 		case "registred_final":
 			session.Interval = update.Message.Text
 			msg := telebotapi.NewMessage(chatID,
 				fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s",
 					session.UserText,
-					 session.Interval))
+					session.Interval))
 			msg.ParseMode = "HTML"
 			msg.ReplyMarkup = telebotapi.NewInlineKeyboardMarkup(
 				telebotapi.NewInlineKeyboardRow(
