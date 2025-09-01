@@ -1,9 +1,10 @@
 package model
 
 type Reminder struct {
-	UserID string
-	Text string
+	UserID       int64
+	Text         string
 	TypeInterval string
-	WeekDay string
-	Time string
+	WeekDay      string
+	Hours        int
+	Minute       int
 }
