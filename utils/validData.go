@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ var (
 	ERRORTYPEINTERVAL = errors.New("incorrect data interval")
 )
 
-func ParseIntervalData(userID int64, text, interval string) (*model.Reminder, error) {
+func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, error) {
 	intervalArr := strings.Split(interval, " ")
 	if len(interval) == 0 {
 		return nil, ERRORNOTNULLINTERVAL
@@ -61,7 +61,7 @@ func ParseIntervalData(userID int64, text, interval string) (*model.Reminder, er
 	}
 
 	reminder := model.Reminder{
-		UserID: userID,
+		ChatID: chatID,
 		Text: text,
 		TypeInterval: typeInterval,
 		WeekDay: weekDay,
@@ -73,11 +73,13 @@ func ParseIntervalData(userID int64, text, interval string) (*model.Reminder, er
 }
 
 func main(){
-	rem, err := ParseIntervalData(124512, "asdasdadas", "Каждый понедельник в 12:50")
+	rem, err := ParseIntervalData(124512, "asdasdadas", "Каждую день в 23:59")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println(rem)
+	fmt.Printf("Юзеру с id %d нужно отправлять в группу такое текст - %s\nКаждый %s в %d часов %d минут!\nТо есть тип интервала - %s",
+		rem.ChatID, rem.Text, rem.WeekDay, rem.Hours, rem.Minute, rem.TypeInterval,
+	)
 }

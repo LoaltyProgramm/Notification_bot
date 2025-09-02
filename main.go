@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"tg-app/model"
+	"tg-app/utils"
 
 	telebotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -13,6 +15,8 @@ type UserSession struct {
 	UserText string
 	Interval string
 }
+
+var dbReminder = make(map[int64]*model.Reminder)
 
 var sessions = make(map[int64]*UserSession)
 
@@ -88,6 +92,8 @@ func main() {
 
 				session.State = "registred_text"
 			case "back":
+				delete(dbReminder, update.CallbackQuery.From.ID)
+
 				deleteMsg := telebotapi.NewDeleteMessage(
 					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
@@ -109,7 +115,7 @@ func main() {
 				}
 
 				session.State = "main_menu"
-				msg := telebotapi.NewMessage(chatID, "Напоминание добавлено✅")
+				msg := telebotapi.NewMessage(chatID, dbReminder[update.CallbackQuery.From.ID].Text) //"Напоминание добавлено✅"
 				if _, err := bot.Send(msg); err != nil {
 					log.Println(err)
 					continue
@@ -185,10 +191,29 @@ func main() {
 				continue
 			}
 
-			session.State = "registred_final"
+			session.State = "registred_pre_final"
 
-		case "registred_final":
+		case "registred_pre_final":
 			session.Interval = update.Message.Text
+
+			rem, err := utils.ParseIntervalData(update.Message.Chat.ID, session.UserText, session.Interval)
+			if err != nil {
+				log.Println(err)
+				session.State = "registred_interval"
+
+				msg := telebotapi.NewMessage(update.Message.Chat.ID, "Не правильный формат ввода интервала\nВведите интервал заново:")
+				if _, err := bot.Send(msg); err != nil {
+					log.Println(err)
+					continue
+				}
+				continue
+			} 
+
+			log.Println(session.State)
+			dbReminder[update.Message.From.ID] = rem
+			session.State = "registred_final"
+			log.Println(session.State)
+		case "registred_final":
 			msg := telebotapi.NewMessage(chatID,
 				fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s",
 					session.UserText,

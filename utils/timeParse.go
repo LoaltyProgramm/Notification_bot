@@ -1,8 +1,7 @@
-package main
+package utils
 
 import (
 	"errors"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -15,14 +14,16 @@ var (
 
 func timeParse(time string) (int ,int, error) {
 	timeArr := strings.Split(time, ":")
-	log.Println(timeArr)
-	log.Println(len(timeArr))
 
 	if len(timeArr) <= 0 {
 		return 1, 1, ERRORLENTIME
 	}
 
 	if len(timeArr) > 2 {
+		return 1, 1, ERRORLENTIME
+	}
+
+	if len(timeArr) < 2 {
 		return 1, 1, ERRORLENTIME
 	}
 
@@ -46,27 +47,3 @@ func timeParse(time string) (int ,int, error) {
 
 	return hours, minute, nil
 }
-
-// func main() {
-// 	h, m, err := timeParse("12:30")
-// 	if err != nil {
-// 		fmt.Println(err)
-// 	}
-// 	fmt.Println(h, "часов", m, "минут")
-
-// 	fmt.Println()
-
-// 	h1, m1, err1 := timeParse("24:30")
-// 	if err1 != nil {
-// 		fmt.Println(err1)
-// 	}
-// 	fmt.Println(h1, m1)
-
-// 	fmt.Println()
-
-// 	h2, m2, err2 := timeParse("23:60")
-// 	if err2 != nil {
-// 		fmt.Println(err2)
-// 	}
-// 	fmt.Println(h2, m2)
-// }
