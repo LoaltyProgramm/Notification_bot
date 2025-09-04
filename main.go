@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"tg-app/model"
 	"tg-app/utils"
 
@@ -14,9 +15,14 @@ type UserSession struct {
 	State    string
 	UserText string
 	Interval string
+	Remin *model.Reminder
 }
 
-var dbReminder = make(map[int64]*model.Reminder)
+var count int
+
+var dbReminder = make(map[int]*model.Reminder)
+
+var rem *model.Reminder
 
 var sessions = make(map[int64]*UserSession)
 
@@ -77,7 +83,6 @@ func main() {
 				log.Println(err)
 				continue
 			}
-			bot.Send(callback)
 
 			switch update.CallbackQuery.Data {
 			case "create_reminder":
@@ -92,8 +97,6 @@ func main() {
 
 				session.State = "registred_text"
 			case "back":
-				delete(dbReminder, update.CallbackQuery.From.ID)
-
 				deleteMsg := telebotapi.NewDeleteMessage(
 					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
@@ -114,8 +117,11 @@ func main() {
 					continue
 				}
 
+				count += 1
+				dbReminder[count] = session.Remin
+
 				session.State = "main_menu"
-				msg := telebotapi.NewMessage(chatID, dbReminder[update.CallbackQuery.From.ID].Text) //"Напоминание добавлено✅"
+				msg := telebotapi.NewMessage(chatID, "Напоминание добавлено✅")
 				if _, err := bot.Send(msg); err != nil {
 					log.Println(err)
 					continue
@@ -142,6 +148,37 @@ func main() {
 				}
 
 				session.State = "registred_text"
+			case "all_lists":
+				deleteMsg := telebotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
+				if _, err := bot.Request(deleteMsg); err != nil {
+					log.Println(err)
+					continue
+				}
+
+				if len(dbReminder) <= 0 {
+					msg := telebotapi.NewMessage(chatID, "Список пуст\nПополняй скорее его)")
+					msg.ReplyMarkup = telebotapi.NewInlineKeyboardMarkup(
+						telebotapi.NewInlineKeyboardRow(
+							telebotapi.NewInlineKeyboardButtonData("Главное меню", "main_menu"),
+						),
+					)
+					if _, err := bot.Send(msg); err != nil {
+						log.Println(err)
+						continue
+					}
+				}
+
+				lists := make([]string, 0, 10)
+				for _, v := range dbReminder {
+					lists = append(lists, fmt.Sprintf("Текст-\n%s\nИнтвервал-\nКаждый %s в %d:%d\n\n", v.Text, v.WeekDay, v.Hours, v.Minute))
+				}
+
+				listsStr := strings.Join(lists, "\n")
+				msg := telebotapi.NewMessage(chatID, listsStr)
+				if _, err := bot.Send(msg); err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 		}
 
@@ -153,6 +190,9 @@ func main() {
 			msg.ReplyMarkup = telebotapi.NewInlineKeyboardMarkup(
 				telebotapi.NewInlineKeyboardRow(
 					telebotapi.NewInlineKeyboardButtonData("Создать напоминание📋", "create_reminder"),
+				),
+				telebotapi.NewInlineKeyboardRow(
+					telebotapi.NewInlineKeyboardButtonData("Список напоминаний", "all_lists"),
 				),
 			)
 			if _, err := bot.Send(msg); err != nil {
@@ -191,29 +231,52 @@ func main() {
 				continue
 			}
 
-			session.State = "registred_pre_final"
+			session.State = "registred_final"
 
-		case "registred_pre_final":
+		case "registred_final":
 			session.Interval = update.Message.Text
 
-			rem, err := utils.ParseIntervalData(update.Message.Chat.ID, session.UserText, session.Interval)
+			session.Remin, err = utils.ParseIntervalData(update.Message.Chat.ID, session.UserText, session.Interval)
 			if err != nil {
 				log.Println(err)
-				session.State = "registred_interval"
+				session.State = "registred_error"
 
-				msg := telebotapi.NewMessage(update.Message.Chat.ID, "Не правильный формат ввода интервала\nВведите интервал заново:")
+				msg := telebotapi.NewMessage(update.Message.Chat.ID, "Не 1 правильный формат ввода интервала\nВведите интервал заново:")
 				if _, err := bot.Send(msg); err != nil {
 					log.Println(err)
 					continue
 				}
 				continue
-			} 
+			}
 
-			log.Println(session.State)
-			dbReminder[update.Message.From.ID] = rem
-			session.State = "registred_final"
-			log.Println(session.State)
-		case "registred_final":
+			msg := telebotapi.NewMessage(chatID,
+				fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s",
+					session.UserText,
+					session.Interval))
+			msg.ParseMode = "HTML"
+			msg.ReplyMarkup = telebotapi.NewInlineKeyboardMarkup(
+				telebotapi.NewInlineKeyboardRow(
+					telebotapi.NewInlineKeyboardButtonData("Подтвержаю", "success_data"),
+					telebotapi.NewInlineKeyboardButtonData("Главное меню", "back"),
+				),
+			)
+			if _, err := bot.Send(msg); err != nil {
+				log.Println(err)
+				continue
+			}
+		case "registred_error":
+			session.Interval = update.Message.Text
+			session.Remin, err = utils.ParseIntervalData(update.Message.Chat.ID, session.UserText, session.Interval)
+			if err != nil {
+				session.State = "registred_error"
+				msg := telebotapi.NewMessage(update.Message.Chat.ID, "Не 2 правильный формат ввода интервала\nВведите интервал заново:")
+				if _, err := bot.Send(msg); err != nil {
+					log.Println(err)
+					continue
+				}
+				continue
+			}
+
 			msg := telebotapi.NewMessage(chatID,
 				fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s",
 					session.UserText,
@@ -230,6 +293,6 @@ func main() {
 				continue
 			}
 		}
-	}
 
+	}
 }
