@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -10,9 +9,9 @@ import (
 )
 
 var (
-	ERRORNOTNULLINTERVAL = errors.New("len nterval can't be 0")
+	ERRORNOTNULLINTERVAL  = errors.New("len nterval can't be 0")
 	ERRORINCORECTTEMPLATE = errors.New("incorrect template interval")
-	ERRORTYPEINTERVAL = errors.New("incorrect data interval")
+	ERRORTYPEINTERVAL     = errors.New("incorrect data interval")
 )
 
 func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, error) {
@@ -28,14 +27,14 @@ func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, er
 	firstValue := strings.ToLower(intervalArr[0])
 
 	validFirstValues := []string{"каждый", "каждую", "каждое"}
-	 
+
 	if !slices.Contains(validFirstValues, firstValue) {
 		return nil, ERRORINCORECTTEMPLATE
 	}
 
 	//правка данных для правильной валидации
 	weekDay := strings.ToLower(intervalArr[1])
-	switch weekDay{
+	switch weekDay {
 	case "среду":
 		weekDay = "среда"
 	case "пятницу":
@@ -45,7 +44,7 @@ func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, er
 	}
 
 	validWeekOfDay := []string{"понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"}
-	
+
 	var typeInterval string
 	if weekDay == "день" {
 		typeInterval = "day"
@@ -61,25 +60,13 @@ func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, er
 	}
 
 	reminder := model.Reminder{
-		ChatID: chatID,
-		Text: text,
+		ChatID:       chatID,
+		Text:         text,
 		TypeInterval: typeInterval,
-		WeekDay: weekDay,
-		Hours: h,
-		Minute: m,
+		WeekDay:      weekDay,
+		Hours:        h,
+		Minute:       m,
 	}
 
 	return &reminder, nil
-}
-
-func main(){
-	rem, err := ParseIntervalData(124512, "asdasdadas", "Каждую день в 23:59")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Printf("Юзеру с id %d нужно отправлять в группу такое текст - %s\nКаждый %s в %d часов %d минут!\nТо есть тип интервала - %s",
-		rem.ChatID, rem.Text, rem.WeekDay, rem.Hours, rem.Minute, rem.TypeInterval,
-	)
 }

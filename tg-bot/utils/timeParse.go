@@ -12,7 +12,7 @@ var (
 	ERRORLENTIME    = errors.New("an time cannot be zero or greater than 2")
 )
 
-func timeParse(time string) (int ,int, error) {
+func timeParse(time string) (int, int, error) {
 	timeArr := strings.Split(time, ":")
 
 	if len(timeArr) <= 0 {
