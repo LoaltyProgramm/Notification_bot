@@ -5,6 +5,15 @@ type Reminder struct {
 	Text         string
 	TypeInterval string
 	WeekDay      string
-	Hours        int
-	Minute       int
+	Time         string
+	FullTime     string
+}
+
+type UserSession struct {
+	Chat_ID int64
+	State         State
+	UserText      string
+	Interval      string
+	IntervalRetry bool
+	Reminder      *Reminder
 }

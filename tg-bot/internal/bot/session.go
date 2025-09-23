@@ -5,35 +5,24 @@ import (
 	"tg-app/model"
 )
 
-// type State string
-
-// const (
-// 	StateMainMenu          State = "main_menu"
-// 	StateRegistred         State = "registred_text"
-// 	StateRegistredInterval State = "registred_interval"
-// 	StateRegistredFinal    State = "registred_final"
-// 	StateRegistredError    State = "registred_error"
-// )
-
-type UserSession struct {
-	State         State
-	UserText      string
-	Interval      string
-	IntervalRetry bool
-	Reminder      *model.Reminder
-}
-
 type Manager struct {
-	session map[int64]*UserSession
-	mu      sync.Mutex
+	session map[int64]*model.UserSession
+	mu      *sync.Mutex
 }
 
-func (m *Manager) Get(chatID int64) *UserSession {
+func NewManager(session map[int64]*model.UserSession) *Manager {
+	return &Manager{
+		session: session,
+		mu: &sync.Mutex{},
+	}
+}
+
+func (m *Manager) Get(chatID int64) *model.UserSession {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if _, ok := m.session[chatID]; !ok {
-		m.session[chatID] = &UserSession{State: StateMainMenu}
+		m.session[chatID] = &model.UserSession{State: model.StateMainMenu, Chat_ID: chatID}
 	}
 
 	return m.session[chatID]

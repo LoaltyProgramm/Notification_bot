@@ -3,18 +3,22 @@ package bot
 import (
 	"log"
 
+	"tg-app/internal/reminder"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Handler struct {
 	Bot     *tgbotapi.BotAPI
 	Session *Manager
+	ServiceReminder *reminder.ReminderService //вставить сервис
 }
 
-func NewHandler(bot *tgbotapi.BotAPI, session *Manager) *Handler {
+func NewHandler(bot *tgbotapi.BotAPI, session *Manager, serviceReminder *reminder.ReminderService) *Handler {
 	return &Handler{
 		Bot:     bot,
 		Session: session,
+		ServiceReminder: serviceReminder,
 	}
 }
 
@@ -41,10 +45,15 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 			return
 		}
 
-		CallbackHandlers(update.CallbackQuery.Data, update, h.Bot, userSession, chatID)
+		CallbackHandlers(update.CallbackQuery.Data, update, h.Bot, userSession, chatID, h.ServiceReminder)
 	}
 
 	if UserStateFunc, ok := StateHandler[userSession.State]; ok {
 		UserStateFunc(h, update, userSession, chatID)
+	} else { //переделать
+		msg := tgbotapi.NewMessage(chatID, "Нету данного колбека")
+		if _, err := h.Bot.Send(msg); err != nil {
+			log.Println("Error callback")
+		}
 	}
 }

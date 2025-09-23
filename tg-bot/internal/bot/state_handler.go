@@ -4,19 +4,22 @@ import (
 	"fmt"
 	"log"
 	"tg-app/utils"
+	"tg-app/model"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var StateHandler = map[State]func(h *Handler, update tgbotapi.Update, session *UserSession, chatID int64){
-	StateMainMenu:          handlerMainMenu,
-	StateRegistredText:     handlerRegistredText,
-	StateRegistredInterval: handlerRegistredInterval,
-	StateRegistredFinal:    handlerRegistredFinal,
-	StateRegistredError:    handlerRegistredError,
+var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64){
+	model.StateMainMenu:          handlerMainMenu,
+	model.StateRegistredText:     handlerRegistredText,
+	model.StateRegistredInterval: handlerRegistredInterval,
+	model.StateRegistredFinal:    handlerRegistredFinal,
+	model.StateRegistredError:    handlerRegistredError,
+	model.StateIdle:              handlerIdle,
+	model.StateErrorInterval:     handlerErrorInterval,
 }
 
-func handlerMainMenu(h *Handler, update tgbotapi.Update, session *UserSession, chatID int64) {
+func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
 	msg := tgbotapi.NewMessage(chatID, "<b>Выберите функцию👇</b>")
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -33,7 +36,7 @@ func handlerMainMenu(h *Handler, update tgbotapi.Update, session *UserSession, c
 	}
 }
 
-func handlerRegistredText(h *Handler, update tgbotapi.Update, session *UserSession, chatID int64) {
+func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
 	msg := tgbotapi.NewMessage(chatID, "<b>Введите текст напоминания✍️</b>")
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -48,7 +51,7 @@ func handlerRegistredText(h *Handler, update tgbotapi.Update, session *UserSessi
 	session.State = "registred_interval"
 }
 
-func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *UserSession, chatID int64) {
+func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
 	if session.IntervalRetry {
 		msg := tgbotapi.NewMessage(chatID, "<b>Введите интервал напоминания⏰</b>")
 		msg.ParseMode = "HTML"
@@ -88,7 +91,7 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *UserS
 	session.State = "registred_final"
 }
 
-func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *UserSession, chatID int64) {
+func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
 	session.Interval = update.Message.Text
 
 	var err error
@@ -125,7 +128,7 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *UserSess
 	}
 }
 
-func handlerRegistredError(h *Handler, update tgbotapi.Update, session *UserSession, chatID int64) {
+func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
 	session.Interval = update.Message.Text
 
 	var err error
@@ -149,6 +152,23 @@ func handlerRegistredError(h *Handler, update tgbotapi.Update, session *UserSess
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Подтвержаю", "success_data"),
 			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "back"),
+		),
+	)
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func handlerIdle(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+	return
+}
+
+func handlerErrorInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+	msg := tgbotapi.NewMessage(chatID, "Список пуст\nПополняй скорее его)")
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
 		),
 	)
 	if _, err := h.Bot.Send(msg); err != nil {

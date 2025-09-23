@@ -54,18 +54,20 @@ func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, er
 		return nil, ERRORTYPEINTERVAL
 	}
 
-	h, m, err := timeParse(intervalArr[3])
+	_, _, err := timeParse(intervalArr[3])
 	if err != nil {
 		return nil, err
 	}
+
+	fullTime := strings.Join(intervalArr, " ")
 
 	reminder := model.Reminder{
 		ChatID:       chatID,
 		Text:         text,
 		TypeInterval: typeInterval,
 		WeekDay:      weekDay,
-		Hours:        h,
-		Minute:       m,
+		Time: intervalArr[3],
+		FullTime: fullTime,
 	}
 
 	return &reminder, nil

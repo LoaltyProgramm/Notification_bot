@@ -1,17 +1,17 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
+	"tg-app/internal/reminder"
 	"tg-app/model"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var dbReminder = make(map[int]*model.Reminder)
-
-func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbotapi.BotAPI, userSession *UserSession, chatID int64) {
+func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbotapi.BotAPI, userSession *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	switch callbackData {
 	case "create_reminder":
 		deleteMsg := tgbotapi.NewDeleteMessage(
@@ -58,9 +58,10 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			return
 		}
 		// логика добавления в бд записи о напоминаниях
-		var count int
-		count += 1
-		dbReminder[count] = userSession.Reminder
+		err := service.Createreminder(context.Background(), userSession.Reminder)
+		if err != nil {
+			log.Fatal(err)
+		}
 		//---------------------------------------------
 		userSession.State = "main_menu"
 		msg := tgbotapi.NewMessage(chatID, "Напоминание добавлено✅")
@@ -89,7 +90,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			return
 		}
 
-		userSession.State = "registred_text"
+		userSession.State = model.StateRegistredText
 	case "all_lists":
 		deleteMsg := tgbotapi.NewDeleteMessage(callback.CallbackQuery.Message.Chat.ID, callback.CallbackQuery.Message.MessageID)
 		if _, err := bot.Request(deleteMsg); err != nil {
@@ -97,23 +98,19 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			return
 		}
 
-		if len(dbReminder) <= 0 {
-			msg := tgbotapi.NewMessage(chatID, "Список пуст\nПополняй скорее его)")
-			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
-				),
-			)
-			if _, err := bot.Send(msg); err != nil {
-				log.Println(err)
-				return
-			}
+		reminders, err := service.ListReminderForChatID(context.Background(), userSession)
+		if err != nil {
+			log.Println(err)
 			return
 		}
 
+		if len(reminders) <= 0 {
+			userSession.State = model.StateErrorInterval
+		}
+
 		lists := make([]string, 0, 10)
-		for _, v := range dbReminder {
-			lists = append(lists, fmt.Sprintf("Текст-\n%s\nИнтвервал-\nКаждый %s в %d:%d\n\n", v.Text, v.WeekDay, v.Hours, v.Minute))
+		for _, v := range reminders {
+			lists = append(lists, fmt.Sprintf("Текст-\n%s\nИнтвервал-\n%s\n", v.Text, v.FullTime))
 		}
 
 		listsStr := strings.Join(lists, "\n")
@@ -127,6 +124,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			log.Println(err)
 			return
 		}
+		userSession.State = "idle"
 		return
 	}
 }
