@@ -9,7 +9,7 @@ import (
 )
 
 func InitDB(cfg string) (*pgxpool.Pool, error) {
-	ctx1 := context.Background()
+	ctx := context.Background()
 
 	config, err := pgxpool.ParseConfig(cfg)
 	if err != nil {
@@ -21,12 +21,12 @@ func InitDB(cfg string) (*pgxpool.Pool, error) {
 	config.MaxConnLifetime = 20 * time.Minute
 	config.MaxConnIdleTime = 8 * time.Minute
 
-	pool, err := pgxpool.NewWithConfig(ctx1, config)
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, errors.New("fatal connection DB")
 	}
 
-	if err := pool.Ping(ctx1); err != nil {
+	if err := pool.Ping(ctx); err != nil {
 		return nil, errors.New("fatal ping DB")
 	}
 
@@ -42,8 +42,7 @@ func InitDB(cfg string) (*pgxpool.Pool, error) {
 		);
 	`
 
-	ctx2 := context.Background()
-	_, err = pool.Exec(ctx2, createTableQuery)
+	_, err = pool.Exec(ctx, createTableQuery)
 	if err != nil {
 		return nil, errors.New("fatal migration table reminder")
 	}

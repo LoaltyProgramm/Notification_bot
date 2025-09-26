@@ -1,6 +1,7 @@
 package model
 
 type Reminder struct {
+	ID           int
 	ChatID       int64
 	Text         string
 	TypeInterval string
@@ -10,7 +11,7 @@ type Reminder struct {
 }
 
 type UserSession struct {
-	Chat_ID int64
+	Chat_ID       int64
 	State         State
 	UserText      string
 	Interval      string

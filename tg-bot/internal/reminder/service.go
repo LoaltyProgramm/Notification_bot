@@ -19,6 +19,11 @@ func (s *ReminderService) Createreminder(ctx context.Context, rem *model.Reminde
 	return s.repo.Addreminder(ctx, rem)
 }
 
-func (s *ReminderService) ListReminderForChatID(ctx context.Context, userSession *model.UserSession) ([]*model.Reminder, error) {
+func (s *ReminderService) ListRemindersForChatID(ctx context.Context, userSession *model.UserSession) ([]*model.Reminder, error) {
 	return s.repo.GetReminders(ctx, userSession)
 }
+
+func (s *ReminderService) ListReminderForID(ctx context.Context, id int) (*model.Reminder, string) {
+	return s.repo.GetReminderForID(ctx, id)
+}
+

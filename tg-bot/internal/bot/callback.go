@@ -3,8 +3,12 @@ package bot
 import (
 	"context"
 	"fmt"
-	"log"
+	"strconv"
 	"strings"
+
+	//"fmt"
+	"log"
+	//"strings"
 	"tg-app/internal/reminder"
 	"tg-app/model"
 
@@ -98,7 +102,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			return
 		}
 
-		reminders, err := service.ListReminderForChatID(context.Background(), userSession)
+		reminders, err := service.ListRemindersForChatID(context.Background(), userSession)
 		if err != nil {
 			log.Println(err)
 			return
@@ -108,23 +112,60 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			userSession.State = model.StateErrorInterval
 		}
 
-		lists := make([]string, 0, 10)
+		//lists := make([]string, 0, 10)
+		// for _, v := range reminders {
+		// 	lists = append(lists, fmt.Sprintf("Текст-\n%s\nИнтвервал-\n%s\n", v.Text, v.FullTime))
+		// }
+
+		// listsStr := strings.Join(lists, "\n")
+		// msg := tgbotapi.NewMessage(chatID, listsStr)
+		// msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		// 	tgbotapi.NewInlineKeyboardRow(
+		// 		tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
+		// 	),
+		// )
+		var rows [][]tgbotapi.InlineKeyboardButton
 		for _, v := range reminders {
-			lists = append(lists, fmt.Sprintf("Текст-\n%s\nИнтвервал-\n%s\n", v.Text, v.FullTime))
+			btn := tgbotapi.NewInlineKeyboardButtonData(v.Text, fmt.Sprintf("reminder_%d", v.ID))
+			rows = append(rows, tgbotapi.NewInlineKeyboardRow(btn))
 		}
 
-		listsStr := strings.Join(lists, "\n")
-		msg := tgbotapi.NewMessage(chatID, listsStr)
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
-			),
-		)
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
+		))
+
+		msg := tgbotapi.NewMessage(chatID, "Ваши напоминания:")
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+
 		if _, err := bot.Send(msg); err != nil {
 			log.Println(err)
 			return
 		}
 		userSession.State = "idle"
 		return
+	}
+
+	switch {
+	case strings.HasPrefix(callbackData, "reminder_"):
+		
+
+		idStr := strings.TrimPrefix(callbackData, "reminder_")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		reminder, errStr := service.ListReminderForID(context.Background(), id)
+		if errStr != "" {
+			log.Println(errStr)
+			return
+		}
+
+		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Текст %s\nИнтервал %s", reminder.Text, reminder.FullTime))
+		if _, err := bot.Send(msg); err != nil {
+			log.Println(err)
+			return
+		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 type Repository interface {
 	Addreminder(ctx context.Context, rem *model.Reminder) error
 	GetReminders(ctx context.Context, userSession *model.UserSession) ([]*model.Reminder, error)
+	GetReminderForID(ctx context.Context, id int) (*model.Reminder, string)
 }
 
 type PGXRepository struct {
@@ -36,7 +37,7 @@ func (r *PGXRepository) Addreminder(ctx context.Context, rem *model.Reminder) er
 
 func (r *PGXRepository) GetReminders(ctx context.Context, userSession *model.UserSession) ([]*model.Reminder, error) {
 	query := `
-		SELECT text, full_time FROM reminder WHERE chat_id = $1;
+		SELECT id, text, full_time FROM reminder WHERE chat_id = $1;
 	`
 
 	rows, err := r.pool.Query(ctx, query, userSession.Chat_ID)
@@ -47,7 +48,7 @@ func (r *PGXRepository) GetReminders(ctx context.Context, userSession *model.Use
 	var reminders []*model.Reminder
 	for rows.Next() {
 		var r model.Reminder
-		if err := rows.Scan(&r.Text, &r.FullTime); err != nil {
+		if err := rows.Scan(&r.ID, &r.Text, &r.FullTime); err != nil {
 			return nil, err
 		}
 
@@ -60,4 +61,25 @@ func (r *PGXRepository) GetReminders(ctx context.Context, userSession *model.Use
 	}
 
 	return reminders, nil
+}
+
+//ошибка в данной функции? надо разораться 
+func (r *PGXRepository) GetReminderForID(ctx context.Context, id int) (*model.Reminder, string) {
+	query := `
+		SELECT text, full_time FROM reminder WHERE id = $1;
+	`
+
+	var text string
+	var fullTime string
+	err := r.pool.QueryRow(context.Background(), query, id).Scan(&text, &fullTime).Error()
+	if err != "" {
+		return nil, err
+	}
+
+	reminder := &model.Reminder{
+		Text: text,
+		FullTime: fullTime,
+	}
+
+	return reminder, ""
 }
