@@ -10,7 +10,8 @@ import (
 type Repository interface {
 	Addreminder(ctx context.Context, rem *model.Reminder) error
 	GetReminders(ctx context.Context, userSession *model.UserSession) ([]*model.Reminder, error)
-	GetReminderForID(ctx context.Context, id int) (*model.Reminder, string)
+	GetReminderForID(ctx context.Context, id int) (*model.Reminder, error)
+	DeleteReminderForID(ctx context.Context, id int) error
 }
 
 type PGXRepository struct {
@@ -63,23 +64,36 @@ func (r *PGXRepository) GetReminders(ctx context.Context, userSession *model.Use
 	return reminders, nil
 }
 
-//ошибка в данной функции? надо разораться 
-func (r *PGXRepository) GetReminderForID(ctx context.Context, id int) (*model.Reminder, string) {
+func (r *PGXRepository) GetReminderForID(ctx context.Context, id int) (*model.Reminder, error) {
 	query := `
 		SELECT text, full_time FROM reminder WHERE id = $1;
 	`
 
 	var text string
 	var fullTime string
-	err := r.pool.QueryRow(context.Background(), query, id).Scan(&text, &fullTime).Error()
-	if err != "" {
+
+	err := r.pool.QueryRow(ctx, query, id).Scan(&text, &fullTime)
+	if err != nil {
 		return nil, err
 	}
 
 	reminder := &model.Reminder{
-		Text: text,
+		Text:     text,
 		FullTime: fullTime,
 	}
 
-	return reminder, ""
+	return reminder, nil
+}
+
+func (r *PGXRepository) DeleteReminderForID(ctx context.Context, id int) error {
+	query := `
+		DELETE FROM reminder WHERE id = $1;
+	`
+
+	_, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

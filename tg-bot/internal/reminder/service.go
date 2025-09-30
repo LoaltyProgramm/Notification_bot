@@ -23,7 +23,11 @@ func (s *ReminderService) ListRemindersForChatID(ctx context.Context, userSessio
 	return s.repo.GetReminders(ctx, userSession)
 }
 
-func (s *ReminderService) ListReminderForID(ctx context.Context, id int) (*model.Reminder, string) {
+func (s *ReminderService) ListReminderForID(ctx context.Context, id int) (*model.Reminder, error) {
 	return s.repo.GetReminderForID(ctx, id)
+}
+
+func (s *ReminderService) RemoveReminderForID(ctx context.Context, id int) error {
+	return s.repo.DeleteReminderForID(ctx, id)
 }
 
