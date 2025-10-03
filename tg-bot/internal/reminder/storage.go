@@ -78,6 +78,7 @@ func (r *PGXRepository) GetReminderForID(ctx context.Context, id int) (*model.Re
 	}
 
 	reminder := &model.Reminder{
+		ID: id,
 		Text:     text,
 		FullTime: fullTime,
 	}

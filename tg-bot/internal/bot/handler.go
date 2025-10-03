@@ -1,28 +1,46 @@
 package bot
 
 import (
+	"fmt"
 	"log"
 
 	"tg-app/internal/reminder"
+	"tg-app/model"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Handler struct {
-	Bot     *tgbotapi.BotAPI
-	Session *Manager
+	Bot             *tgbotapi.BotAPI
+	Session         *Manager
 	ServiceReminder *reminder.ReminderService //вставить сервис
 }
 
 func NewHandler(bot *tgbotapi.BotAPI, session *Manager, serviceReminder *reminder.ReminderService) *Handler {
 	return &Handler{
-		Bot:     bot,
-		Session: session,
+		Bot:             bot,
+		Session:         session,
 		ServiceReminder: serviceReminder,
 	}
 }
 
 func (h *Handler) UpdateHandler(update tgbotapi.Update) {
+	defer func() {
+		if r := recover(); r != nil {
+			err := fmt.Errorf("panic: %v", r)
+			// тут userSession уже может быть nil, поэтому проверим
+			var chatID int64
+			if update.Message != nil {
+				chatID = update.Message.Chat.ID
+			} else if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
+				chatID = update.CallbackQuery.Message.Chat.ID
+			}
+			userSession := h.Session.Get(chatID)
+
+			h.handleError(update, userSession, chatID, h.ServiceReminder, err)
+		}
+	}()
+
 	var chatID int64
 	if update.Message != nil {
 		chatID = update.Message.Chat.ID
@@ -49,11 +67,23 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 	}
 
 	if UserStateFunc, ok := StateHandler[userSession.State]; ok {
-		UserStateFunc(h, update, userSession, chatID)
+		UserStateFunc(h, update, userSession, chatID, h.ServiceReminder)
 	} else { //переделать
 		msg := tgbotapi.NewMessage(chatID, "Нету данного колбека")
 		if _, err := h.Bot.Send(msg); err != nil {
 			log.Println("Error callback")
 		}
 	}
+}
+
+func (h *Handler) handleError(update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, err error) {
+	log.Printf("Ошибка: %v", err)
+
+	// бизнес-логика обработки ошибок
+	session.State = "main_menu"
+
+	msg := tgbotapi.NewMessage(chatID, "⚠️ Ошибка. Вас вернули в главное меню.")
+	h.Bot.Send(msg)
+
+	handlerMainMenu(h, update, session, chatID, service)
 }

@@ -1,25 +1,31 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"tg-app/utils"
+	"strconv"
+	"tg-app/internal/reminder"
 	"tg-app/model"
+	"tg-app/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64){
+var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService){
 	model.StateMainMenu:          handlerMainMenu,
 	model.StateRegistredText:     handlerRegistredText,
 	model.StateRegistredInterval: handlerRegistredInterval,
 	model.StateRegistredFinal:    handlerRegistredFinal,
 	model.StateRegistredError:    handlerRegistredError,
 	model.StateIdle:              handlerIdle,
-	model.StateErrorInterval:     handlerErrorInterval,
+	model.StateEmptyLists:     handlerEmptyLists,
+	model.StateAddREminder:       handlerAddReminder,
+	model.StateAllLists:          handlerAllLists,
+	model.StateList:              handlerList,
 }
 
-func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	msg := tgbotapi.NewMessage(chatID, "<b>Выберите функцию👇</b>")
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -36,7 +42,7 @@ func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSess
 	}
 }
 
-func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	msg := tgbotapi.NewMessage(chatID, "<b>Введите текст напоминания✍️</b>")
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -51,7 +57,7 @@ func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.Use
 	session.State = "registred_interval"
 }
 
-func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	if session.IntervalRetry {
 		msg := tgbotapi.NewMessage(chatID, "<b>Введите интервал напоминания⏰</b>")
 		msg.ParseMode = "HTML"
@@ -91,7 +97,7 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 	session.State = "registred_final"
 }
 
-func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	session.Interval = update.Message.Text
 
 	var err error
@@ -128,7 +134,7 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.Us
 	}
 }
 
-func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	session.Interval = update.Message.Text
 
 	var err error
@@ -160,13 +166,84 @@ func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.Us
 	}
 }
 
-func handlerIdle(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+func handlerIdle(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	return
 }
 
-func handlerErrorInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64) {
+func handlerEmptyLists(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	msg := tgbotapi.NewMessage(chatID, "Список пуст\nПополняй скорее его)")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
+		),
+	)
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func handlerAddReminder(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	// логика добавления в бд записи о напоминаниях
+	err := service.Createreminder(context.Background(), session.Reminder)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//---------------------------------------------
+	session.State = "main_menu"
+	msg := tgbotapi.NewMessage(chatID, "Напоминание добавлено✅")
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(err)
+		return
+	}
+
+	handlerMainMenu(h, update, session, chatID, service)
+}
+
+func handlerAllLists(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	reminders, err := service.ListRemindersForChatID(context.Background(), session)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	if len(reminders) <= 0 {
+		session.State = model.StateEmptyLists
+		handlerEmptyLists(h, update, session, chatID, service)
+		return
+	}
+
+	var rows [][]tgbotapi.InlineKeyboardButton
+	for _, v := range reminders {
+		btn := tgbotapi.NewInlineKeyboardButtonData(v.Text, fmt.Sprintf("reminder_%d", v.ID))
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(btn))
+	}
+
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
+	))
+
+	msg := tgbotapi.NewMessage(chatID, "Ваши напоминания:")
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+
+	session.State = "idle"
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(err)
+		return
+	}
+
+	handlerIdle(h, update, session, chatID, service)
+}
+
+func handlerList(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Текст:\n%s\n\nИнтервал:\n%s", session.Reminder.Text, session.Reminder.FullTime))
+	idStr := strconv.Itoa(session.Reminder.ID)
+	log.Println(session.Reminder)
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Удалить", fmt.Sprintf("delete_reminder_%s", idStr)),//error
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "all_lists"),
+		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
 		),

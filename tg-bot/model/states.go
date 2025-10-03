@@ -9,5 +9,8 @@ const (
 	StateRegistredFinal State = "registred_final"
 	StateRegistredError State = "registred_error"
 	StateIdle State = "idle"
-	StateErrorInterval State = "error_interval"
+	StateEmptyLists State = "empty_lists"
+	StateAddREminder State = "add_reminder"
+	StateAllLists State = "all_lists"
+	StateList State = "get_list"
 )
