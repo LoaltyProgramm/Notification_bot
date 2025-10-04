@@ -13,4 +13,7 @@ const (
 	StateAddREminder State = "add_reminder"
 	StateAllLists State = "all_lists"
 	StateList State = "get_list"
+	StateAddGroup State = "add_state"
+	StateWaitAddGroup State = "wait_add_group"
+	StateFinalAddGroup State = "final_add_group"
 )

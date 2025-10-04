@@ -43,18 +43,19 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 
 	if update.MyChatMember != nil {
 		chat := update.MyChatMember.Chat
-
+		userID := update.MyChatMember.From.ID
+		userSession := h.Session.Get(userID)
 		// если это группа или супергруппа
 		if chat.Type == "group" || chat.Type == "supergroup" {
-			// сохраняем ID группы, если нужно
-			groupID := chat.ID
-			groupTitle := chat.Title
-			log.Printf("Бота добавили в группу %s (ID: %d)", groupTitle, groupID)
-
-			// НИЧЕГО не отправляем в группу!
-			// Просто выходим
+			if userHandler, ok := StateHandler[userSession.State]; ok {
+				userHandler(h, update, userSession, userID, h.ServiceReminder)
+			} else {
+				log.Println("ERORR")
+				return
+			}
 			return
 		}
+		return
 	}
 
 	if update.Message != nil && (update.Message.Chat.Type == "group" || update.Message.Chat.Type == "supergroup") {

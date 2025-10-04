@@ -12,6 +12,7 @@ type Repository interface {
 	GetReminders(ctx context.Context, userSession *model.UserSession) ([]*model.Reminder, error)
 	GetReminderForID(ctx context.Context, id int) (*model.Reminder, error)
 	DeleteReminderForID(ctx context.Context, id int) error
+	AddGroup(ctx context.Context, userSession *model.UserSession) error
 }
 
 type PGXRepository struct {
@@ -92,6 +93,19 @@ func (r *PGXRepository) DeleteReminderForID(ctx context.Context, id int) error {
 	`
 
 	_, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *PGXRepository) AddGroup(ctx context.Context, userSession *model.UserSession) error {
+	query := `
+		INSERT INTO user_group (chat_id_group, user_id, title_group) VALUES ($1, $2, $3);
+	`
+
+	_, err := r.pool.Exec(ctx, query, userSession.Group.GroupID, userSession.Group.UserID, userSession.Group.TitleGroup)
 	if err != nil {
 		return err
 	}

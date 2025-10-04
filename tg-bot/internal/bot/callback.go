@@ -90,6 +90,39 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 		}
 
 		userSession.State = model.StateAllLists
+	case "add_group":
+		deleteMsg := tgbotapi.NewDeleteMessage(
+			callback.CallbackQuery.Message.Chat.ID,
+			callback.CallbackQuery.Message.MessageID,
+		)
+		if _, err := bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		}
+
+		userSession.State = model.StateAddGroup
+	case "back_add_group":
+		deleteMsg := tgbotapi.NewDeleteMessage(
+			callback.CallbackQuery.Message.Chat.ID,
+			callback.CallbackQuery.Message.MessageID,
+		)
+		if _, err := bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		}
+
+		userSession.State = model.StateMainMenu
+	case "add":
+		deleteMsg := tgbotapi.NewDeleteMessage(
+			callback.CallbackQuery.Message.Chat.ID,
+			callback.CallbackQuery.Message.MessageID,
+		)
+		if _, err := bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		}
+
+		userSession.State = model.StateFinalAddGroup
 	}
 
 	switch {

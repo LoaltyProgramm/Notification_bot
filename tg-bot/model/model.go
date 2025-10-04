@@ -10,6 +10,12 @@ type Reminder struct {
 	FullTime     string
 }
 
+type Group struct {
+	UserID     int64
+	GroupID    int64
+	TitleGroup string
+}
+
 type UserSession struct {
 	Chat_ID       int64
 	State         State
@@ -17,4 +23,5 @@ type UserSession struct {
 	Interval      string
 	IntervalRetry bool
 	Reminder      *Reminder
+	Group         *Group
 }
