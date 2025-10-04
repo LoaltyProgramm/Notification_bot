@@ -41,6 +41,26 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 		}
 	}()
 
+	if update.MyChatMember != nil {
+		chat := update.MyChatMember.Chat
+
+		// если это группа или супергруппа
+		if chat.Type == "group" || chat.Type == "supergroup" {
+			// сохраняем ID группы, если нужно
+			groupID := chat.ID
+			groupTitle := chat.Title
+			log.Printf("Бота добавили в группу %s (ID: %d)", groupTitle, groupID)
+
+			// НИЧЕГО не отправляем в группу!
+			// Просто выходим
+			return
+		}
+	}
+
+	if update.Message != nil && (update.Message.Chat.Type == "group" || update.Message.Chat.Type == "supergroup") {
+		return
+	}
+
 	var chatID int64
 	if update.Message != nil {
 		chatID = update.Message.Chat.ID

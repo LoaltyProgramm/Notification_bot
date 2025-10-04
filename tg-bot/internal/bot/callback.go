@@ -35,7 +35,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			return
 		}
 
-		userSession.State = model.StateRegistredInterval
+		userSession.State = model.StateMainMenu
 	case "back_interval":
 		deleteMsg := tgbotapi.NewDeleteMessage(
 			callback.CallbackQuery.Message.Chat.ID,
