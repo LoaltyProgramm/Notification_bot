@@ -11,6 +11,7 @@ type Reminder struct {
 }
 
 type Group struct {
+	ID int
 	UserID     int64
 	GroupID    int64
 	TitleGroup string

@@ -23,6 +23,7 @@ func (m *Manager) Get(chatID int64) *model.UserSession {
 
 	if _, ok := m.session[chatID]; !ok {
 		m.session[chatID] = &model.UserSession{State: model.StateMainMenu, Chat_ID: chatID}
+		m.session[chatID].Group = &model.Group{}
 	}
 
 	return m.session[chatID]

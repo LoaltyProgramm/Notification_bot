@@ -26,6 +26,7 @@ var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, sess
 	model.StateAddGroup:          handlerAddGroup,
 	model.StateWaitAddGroup:      handlerWaitGroup,
 	model.StateFinalAddGroup:     handlerFinalAddGroup,
+	model.StateAllGroup:          handlerAllGroup,
 }
 
 func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
@@ -34,12 +35,11 @@ func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSess
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Создать напоминание📋", "create_reminder"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Список напоминаний", "all_lists"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Добавить группу", "add_group"),
+			tgbotapi.NewInlineKeyboardButtonData("Список групп", "all_group"),
 		),
 	)
 	if _, err := h.Bot.Send(msg); err != nil {
@@ -280,10 +280,6 @@ func handlerWaitGroup(h *Handler, update tgbotapi.Update, session *model.UserSes
 		return
 	}
 
-	if session.Group == nil {
-		session.Group = &model.Group{}
-	}
-
 	session.Group.TitleGroup = update.MyChatMember.Chat.Title
 	session.Group.UserID = update.MyChatMember.From.ID
 	session.Group.GroupID = update.MyChatMember.Chat.ID
@@ -321,4 +317,43 @@ func handlerFinalAddGroup(h *Handler, update tgbotapi.Update, session *model.Use
 	session.State = model.StateMainMenu
 
 	handlerMainMenu(h, update, session, chatID, service)
+}
+
+func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	log.Println("Start handler all group")
+	groups, err := service.ListGroups(context.Background(), session)
+	if err != nil {
+		log.Println(fmt.Sprintf("Ошибка в запросе всем групп - %v", err))
+		return
+	}
+
+	log.Println(fmt.Sprintf("Get slice groups, in her - %d", len(groups)))
+
+	if len(groups) == 0 {
+		session.State = model.StateEmptyLists
+		log.Println(fmt.Sprintf("Slice groups - %d", len(groups)))
+		handlerEmptyLists(h, update, session, chatID, service)
+		return
+	}
+
+	var rows [][]tgbotapi.InlineKeyboardButton
+	for _, gr := range groups {
+		btn := tgbotapi.NewInlineKeyboardButtonData(gr.TitleGroup, fmt.Sprintf("group_%d", gr.ID))
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(btn))
+	}
+
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
+	))
+
+	log.Println("Start send message")
+	session.State = model.StateIdle
+	msg := tgbotapi.NewMessage(chatID, "Добавленные группы:")
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(fmt.Sprintf("Ошибка в передаче сообщения - %v", err))
+		return
+	}
+
+	handlerIdle(h, update, session, chatID, service)
 }

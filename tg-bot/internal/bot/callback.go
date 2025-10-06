@@ -123,6 +123,17 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 		}
 
 		userSession.State = model.StateFinalAddGroup
+	case "all_group":
+		deleteMsg := tgbotapi.NewDeleteMessage(
+			callback.CallbackQuery.Message.Chat.ID,
+			callback.CallbackQuery.Message.MessageID,
+		)
+		if _, err := bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		}
+
+		userSession.State = model.StateAllGroup
 	}
 
 	switch {

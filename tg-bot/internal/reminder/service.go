@@ -53,3 +53,7 @@ func (s *ReminderService) CreateGroup(ctx context.Context, userSession *model.Us
 	return nil
 }
 
+func (s *ReminderService) ListGroups(ctx context.Context, userSession *model.UserSession) ([]*model.Group, error) {
+	return s.repo.GetGroupsForUserID(ctx, userSession)
+}
+

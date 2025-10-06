@@ -13,6 +13,7 @@ type Repository interface {
 	GetReminderForID(ctx context.Context, id int) (*model.Reminder, error)
 	DeleteReminderForID(ctx context.Context, id int) error
 	AddGroup(ctx context.Context, userSession *model.UserSession) error
+	GetGroupsForUserID(ctx context.Context, userSession *model.UserSession) ([]*model.Group, error)
 }
 
 type PGXRepository struct {
@@ -111,4 +112,30 @@ func (r *PGXRepository) AddGroup(ctx context.Context, userSession *model.UserSes
 	}
 
 	return nil
+}
+
+func (r *PGXRepository) GetGroupsForUserID(ctx context.Context, userSession *model.UserSession) ([]*model.Group, error) {
+	query := `
+		SELECT id, chat_id_group, user_id, title_group FROM user_group WHERE user_id = $1;
+	`
+	rows, err := r.pool.Query(ctx, query, userSession.Chat_ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var groups []*model.Group
+	for rows.Next(){
+		group := &model.Group{}
+		if err := rows.Scan(&group.ID, &group.GroupID, &group.UserID, &group.TitleGroup); err != nil {
+			return nil, err
+		}
+		groups = append(groups, group)
+	} 
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return groups, nil
 }
