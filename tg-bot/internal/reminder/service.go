@@ -57,3 +57,11 @@ func (s *ReminderService) ListGroups(ctx context.Context, userSession *model.Use
 	return s.repo.GetGroupsForUserID(ctx, userSession)
 }
 
+func (s *ReminderService) RemoveGroup(ctx context.Context, id int64) error {
+	return s.repo.DeleteGroupForID(ctx, id)
+}
+
+
+func (s *ReminderService) ListTitleGroup(ctx context.Context, id int64) (string, error) {
+	return s.repo.GetTitleGroupForID(ctx, id)
+}

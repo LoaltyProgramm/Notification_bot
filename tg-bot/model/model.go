@@ -11,7 +11,7 @@ type Reminder struct {
 }
 
 type Group struct {
-	ID int
+	ID         int
 	UserID     int64
 	GroupID    int64
 	TitleGroup string
@@ -25,4 +25,5 @@ type UserSession struct {
 	IntervalRetry bool
 	Reminder      *Reminder
 	Group         *Group
+	RemoveGroup   int64
 }

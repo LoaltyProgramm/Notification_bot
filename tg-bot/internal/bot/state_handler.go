@@ -27,6 +27,8 @@ var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, sess
 	model.StateWaitAddGroup:      handlerWaitGroup,
 	model.StateFinalAddGroup:     handlerFinalAddGroup,
 	model.StateAllGroup:          handlerAllGroup,
+	model.StateRemoveGroup:       handlerRemoveGroup,
+	model.StateErrorAddGroup:     handlerErrorStatusAddGroup,
 }
 
 func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
@@ -356,4 +358,37 @@ func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSess
 	}
 
 	handlerIdle(h, update, session, chatID, service)
+}
+
+func handlerRemoveGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	titleGroup, err := h.ServiceReminder.ListTitleGroup(context.Background(), session.RemoveGroup)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	err = h.ServiceReminder.RemoveGroup(context.Background(), session.RemoveGroup)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Вы убрали бота из группы - %s\nМы автоматически удалили группу из вашего списка", titleGroup))
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func handlerErrorStatusAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	msg := tgbotapi.NewMessage(chatID, "Для корректного добавления бота в группу, удалите его из группы куда добавили.\nДалее в главном меню нажмите кнопку - добавить бота. После чего добавьте обратно бота в нужную группу\nТак бот корректно добавиться в список!")
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
+		),
+	)
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(err)
+		return
+	}
 }

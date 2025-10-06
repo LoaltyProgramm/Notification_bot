@@ -17,4 +17,6 @@ const (
 	StateWaitAddGroup State = "wait_add_group"
 	StateFinalAddGroup State = "final_add_group"
 	StateAllGroup State = "all_group"
+	StateRemoveGroup = "remove_group"
+	StateErrorAddGroup = "error_status_add_group"
 )

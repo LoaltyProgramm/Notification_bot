@@ -14,6 +14,8 @@ type Repository interface {
 	DeleteReminderForID(ctx context.Context, id int) error
 	AddGroup(ctx context.Context, userSession *model.UserSession) error
 	GetGroupsForUserID(ctx context.Context, userSession *model.UserSession) ([]*model.Group, error)
+	DeleteGroupForID(ctx context.Context, id int64) error
+	GetTitleGroupForID(ctx context.Context, id int64) (string, error)
 }
 
 type PGXRepository struct {
@@ -138,4 +140,30 @@ func (r *PGXRepository) GetGroupsForUserID(ctx context.Context, userSession *mod
 	}
 
 	return groups, nil
+}
+
+func (r *PGXRepository) DeleteGroupForID(ctx context.Context, id int64) error {
+	query := `
+		DELETE FROM user_group WHERE chat_id_group = $1;
+	`
+
+	_, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *PGXRepository) GetTitleGroupForID(ctx context.Context, id int64) (string, error) {
+	query := `
+		SELECT title_group FROM user_group WHERE chat_id_group = $1;
+	`
+	var title string
+	err := r.pool.QueryRow(ctx, query, id).Scan(&title)
+	if err != nil {
+		return "", err
+	}
+
+	return title, nil
 }

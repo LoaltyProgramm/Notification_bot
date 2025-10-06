@@ -45,15 +45,44 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 		chat := update.MyChatMember.Chat
 		userID := update.MyChatMember.From.ID
 		userSession := h.Session.Get(userID)
-		// если это группа или супергруппа
-		if chat.Type == "group" || chat.Type == "supergroup" {
-			if userHandler, ok := StateHandler[userSession.State]; ok {
-				userHandler(h, update, userSession, userID, h.ServiceReminder)
-			} else {
-				log.Println("ERORR")
+		newStatus := update.MyChatMember.NewChatMember.Status
+		log.Println(userSession.State)
+		if userSession.State != model.StateWaitAddGroup {
+			if newStatus != "kicked" && newStatus != "left" {
+				userSession.State = model.StateErrorAddGroup
+				if userHandler, ok := StateHandler[userSession.State]; ok {
+					userHandler(h, update, userSession, userID, h.ServiceReminder)
+				} else {
+					log.Println("ERORR")
+					return
+				}
 				return
 			}
-			return
+		}
+
+		// если это группа или супергруппа
+		if chat.Type == "group" || chat.Type == "supergroup" {
+			switch newStatus {
+			case "member":
+				if userHandler, ok := StateHandler[userSession.State]; ok {
+					userHandler(h, update, userSession, userID, h.ServiceReminder)
+				} else {
+					log.Println("ERORR")
+					return
+				}
+				return
+			case "kicked", "left":
+				userSession.State = model.StateRemoveGroup
+				idGroup := update.MyChatMember.Chat.ID
+				userSession.RemoveGroup = idGroup
+				if userHandler, ok := StateHandler[userSession.State]; ok {
+					userHandler(h, update, userSession, userID, h.ServiceReminder)
+				} else {
+					log.Println("ERORR")
+					return
+				}
+			}
+
 		}
 		return
 	}
