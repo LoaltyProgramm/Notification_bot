@@ -18,12 +18,15 @@ type Group struct {
 }
 
 type UserSession struct {
-	Chat_ID       int64
-	State         State
-	UserText      string
-	Interval      string
-	IntervalRetry bool
-	Reminder      *Reminder
-	Group         *Group
-	RemoveGroup   int64
+	isStartBot      bool
+	Chat_ID         int64
+	State           State
+	UserText        string
+	Interval        string
+	IntervalRetry   bool
+	Reminder        *Reminder
+	Group           *Group
+	RemoveGroup     int64
+	RemoveMSG       int
+	RemoveMSGChatID int64
 }

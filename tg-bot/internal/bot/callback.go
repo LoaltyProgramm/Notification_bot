@@ -2,9 +2,9 @@ package bot
 
 import (
 	"context"
+	"log"
 	"strconv"
 	"strings"
-	"log"
 
 	"tg-app/internal/reminder"
 	"tg-app/model"
@@ -58,7 +58,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			log.Println(err)
 			return
 		}
-		
+
 		userSession.State = model.StateAddREminder
 	case "redirect_main_menu":
 		deleteMsg := tgbotapi.NewDeleteMessage(
@@ -68,6 +68,19 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 		if _, err := bot.Request(deleteMsg); err != nil {
 			log.Println(err)
 			return
+		}
+
+		if userSession.RemoveMSG != 0 && userSession.RemoveMSGChatID != 0 && userSession.State == model.StateRemoveGroup {
+			deleteMsg = tgbotapi.NewDeleteMessage(
+				userSession.RemoveMSGChatID, userSession.RemoveMSG,
+			)
+			if _, err := bot.Request(deleteMsg); err != nil {
+				log.Println(err)
+				return
+			} else {
+				userSession.RemoveMSG = 0
+				userSession.RemoveMSGChatID = 0
+			}
 		}
 
 		userSession.State = model.StateMainMenu
@@ -82,7 +95,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 		}
 
 		userSession.State = model.StateRegistredText
-	case "all_lists": 
+	case "all_lists":
 		deleteMsg := tgbotapi.NewDeleteMessage(callback.CallbackQuery.Message.Chat.ID, callback.CallbackQuery.Message.MessageID)
 		if _, err := bot.Request(deleteMsg); err != nil {
 			log.Println(err)
@@ -143,7 +156,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			log.Println(err)
 			return
 		}
-		
+
 		idStr := strings.TrimPrefix(callbackData, "reminder_")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {

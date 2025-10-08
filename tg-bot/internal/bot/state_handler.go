@@ -44,10 +44,14 @@ func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSess
 			tgbotapi.NewInlineKeyboardButtonData("Список групп", "all_group"),
 		),
 	)
-	if _, err := h.Bot.Send(msg); err != nil {
+	infoMSG, err := h.Bot.Send(msg)
+	if err != nil {
 		log.Println(err)
 		return
 	}
+
+	session.RemoveMSG = infoMSG.MessageID
+	session.RemoveMSGChatID = infoMSG.Chat.ID
 }
 
 func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
@@ -58,14 +62,31 @@ func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.Use
 			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
 		),
 	)
-	if _, err := h.Bot.Send(msg); err != nil {
+	infoMSG, err := h.Bot.Send(msg)
+	if err != nil {
 		log.Println("ERROR - ", err)
 		return
 	}
+
+	session.RemoveMSG = infoMSG.MessageID
+	session.RemoveMSGChatID = infoMSG.Chat.ID
+
 	session.State = "registred_interval"
 }
 
 func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	if session.RemoveMSGChatID != 0 && session.RemoveMSG != 0 {
+		deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
+		if _, err := h.Bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		} else {
+			session.RemoveMSGChatID = 0
+			session.RemoveMSG = 0
+		}
+
+	}
+
 	if session.IntervalRetry {
 		msg := tgbotapi.NewMessage(chatID, "<b>Введите интервал напоминания⏰</b>")
 		msg.ParseMode = "HTML"
@@ -76,10 +97,14 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 			),
 		)
 
-		if _, err := h.Bot.Send(msg); err != nil {
-			log.Println(err)
+		infoMSG, err := h.Bot.Send(msg)
+		if err != nil {
+			log.Println("ERROR - ", err)
 			return
 		}
+
+		session.RemoveMSG = infoMSG.MessageID
+		session.RemoveMSGChatID = infoMSG.Chat.ID
 
 		session.IntervalRetry = false
 
@@ -97,10 +122,14 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 		),
 	)
 
-	if _, err := h.Bot.Send(msg); err != nil {
-		log.Println(err)
+	infoMSG, err := h.Bot.Send(msg)
+	if err != nil {
+		log.Println("ERROR - ", err)
 		return
 	}
+
+	session.RemoveMSG = infoMSG.MessageID
+	session.RemoveMSGChatID = infoMSG.Chat.ID
 
 	session.State = "registred_final"
 }
@@ -108,6 +137,17 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	session.Interval = update.Message.Text
 
+	if session.RemoveMSGChatID != 0 && session.RemoveMSG != 0 {
+		deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
+		if _, err := h.Bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		} else {
+			session.RemoveMSGChatID = 0
+			session.RemoveMSG = 0
+		}
+
+	}
 	var err error
 	session.Reminder, err = utils.ParseIntervalData(chatID, session.UserText, session.Interval)
 	if err != nil {
@@ -269,17 +309,37 @@ func handlerAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSess
 			tgbotapi.NewInlineKeyboardButtonData("Отмена", "back_add_group"),
 		),
 	)
-	if _, err := h.Bot.Send(msg); err != nil {
+	infoMSG, err := h.Bot.Send(msg)
+	if err != nil {
 		log.Println(err)
 		return
 	}
 
+	msgID := infoMSG.MessageID
+	removeMsgChatID := infoMSG.Chat.ID
+
+	session.RemoveMSG = msgID
+	session.RemoveMSGChatID = removeMsgChatID
+
 	session.State = model.StateWaitAddGroup
+
 }
 
 func handlerWaitGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	if update.MyChatMember == nil {
 		return
+	}
+
+	if session.RemoveMSG == 0 {
+		log.Println("No msg id")
+	}
+	deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
+	if _, err := h.Bot.Request(deleteMsg); err != nil {
+		log.Println(err)
+		return
+	} else {
+		session.RemoveMSGChatID = 0
+		session.RemoveMSG = 0
 	}
 
 	session.Group.TitleGroup = update.MyChatMember.Chat.Title
@@ -297,12 +357,13 @@ func handlerWaitGroup(h *Handler, update tgbotapi.Update, session *model.UserSes
 			tgbotapi.NewInlineKeyboardButtonData("Отмена", "remove"), //Callback доработать
 		),
 	)
+
 	if _, err := h.Bot.Send(msg); err != nil {
 		log.Println(err)
 		return
 	}
-}
 
+}
 func handlerFinalAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	err := service.CreateGroup(context.Background(), session)
 	if err != nil {
@@ -325,15 +386,12 @@ func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSess
 	log.Println("Start handler all group")
 	groups, err := service.ListGroups(context.Background(), session)
 	if err != nil {
-		log.Println(fmt.Sprintf("Ошибка в запросе всем групп - %v", err))
+		log.Println(err)
 		return
 	}
 
-	log.Println(fmt.Sprintf("Get slice groups, in her - %d", len(groups)))
-
 	if len(groups) == 0 {
 		session.State = model.StateEmptyLists
-		log.Println(fmt.Sprintf("Slice groups - %d", len(groups)))
 		handlerEmptyLists(h, update, session, chatID, service)
 		return
 	}
@@ -353,7 +411,7 @@ func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSess
 	msg := tgbotapi.NewMessage(chatID, "Добавленные группы:")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
 	if _, err := h.Bot.Send(msg); err != nil {
-		log.Println(fmt.Sprintf("Ошибка в передаче сообщения - %v", err))
+		log.Println(err)
 		return
 	}
 
@@ -374,6 +432,11 @@ func handlerRemoveGroup(h *Handler, update tgbotapi.Update, session *model.UserS
 	}
 
 	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Вы убрали бота из группы - %s\nМы автоматически удалили группу из вашего списка", titleGroup))
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Готово", "redirect_main_menu"),
+		),
+	)
 	if _, err := h.Bot.Send(msg); err != nil {
 		log.Println(err)
 		return
@@ -381,6 +444,17 @@ func handlerRemoveGroup(h *Handler, update tgbotapi.Update, session *model.UserS
 }
 
 func handlerErrorStatusAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	if session.RemoveMSG != 0 && session.RemoveMSGChatID != 0 {
+		deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
+		if _, err := h.Bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		} else {
+			session.RemoveMSGChatID = 0
+			session.RemoveMSG = 0
+		}
+	}
+	
 	msg := tgbotapi.NewMessage(chatID, "Для корректного добавления бота в группу, удалите его из группы куда добавили.\nДалее в главном меню нажмите кнопку - добавить бота. После чего добавьте обратно бота в нужную группу\nТак бот корректно добавиться в список!")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(

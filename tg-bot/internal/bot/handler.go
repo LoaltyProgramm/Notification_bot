@@ -46,8 +46,9 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 		userID := update.MyChatMember.From.ID
 		userSession := h.Session.Get(userID)
 		newStatus := update.MyChatMember.NewChatMember.Status
+		typeMember := chat.Type
 		log.Println(userSession.State)
-		if userSession.State != model.StateWaitAddGroup {
+		if userSession.State != model.StateWaitAddGroup && typeMember != "private" {
 			if newStatus != "kicked" && newStatus != "left" {
 				userSession.State = model.StateErrorAddGroup
 				if userHandler, ok := StateHandler[userSession.State]; ok {
