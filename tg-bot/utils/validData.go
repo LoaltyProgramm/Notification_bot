@@ -66,8 +66,8 @@ func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, er
 		Text:         text,
 		TypeInterval: typeInterval,
 		WeekDay:      weekDay,
-		Time: intervalArr[3],
-		FullTime: fullTime,
+		Time:         intervalArr[3],
+		FullTime:     fullTime,
 	}
 
 	return &reminder, nil

@@ -13,7 +13,7 @@ import (
 type Handler struct {
 	Bot             *tgbotapi.BotAPI
 	Session         *Manager
-	ServiceReminder *reminder.ReminderService //вставить сервис
+	ServiceReminder *reminder.ReminderService
 }
 
 func NewHandler(bot *tgbotapi.BotAPI, session *Manager, serviceReminder *reminder.ReminderService) *Handler {
@@ -28,7 +28,7 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := fmt.Errorf("panic: %v", r)
-			// тут userSession уже может быть nil, поэтому проверим
+
 			var chatID int64
 			if update.Message != nil {
 				chatID = update.Message.Chat.ID

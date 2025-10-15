@@ -82,7 +82,7 @@ func (r *PGXRepository) GetReminderForID(ctx context.Context, id int) (*model.Re
 	}
 
 	reminder := &model.Reminder{
-		ID: id,
+		ID:       id,
 		Text:     text,
 		FullTime: fullTime,
 	}
@@ -126,13 +126,13 @@ func (r *PGXRepository) GetGroupsForUserID(ctx context.Context, userSession *mod
 	}
 
 	var groups []*model.Group
-	for rows.Next(){
+	for rows.Next() {
 		group := &model.Group{}
 		if err := rows.Scan(&group.ID, &group.GroupID, &group.UserID, &group.TitleGroup); err != nil {
 			return nil, err
 		}
 		groups = append(groups, group)
-	} 
+	}
 	defer rows.Close()
 
 	if err := rows.Err(); err != nil {

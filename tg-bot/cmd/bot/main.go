@@ -2,23 +2,29 @@ package main
 
 import (
 	"log"
-	"os"
 
+	"tg-app/config"
 	tg_internal "tg-app/internal/bot"
 	"tg-app/internal/db"
 	"tg-app/internal/reminder"
 	"tg-app/model"
 
 	telebotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	token := os.Getenv("TOKEN_BOT")
-	if token == "" {
-		log.Fatal("No token")
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	bot, err := telebotapi.NewBotAPI(token)
+	cfg, err := config.NewConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bot, err := telebotapi.NewBotAPI(cfg.BotAPI)
 	if err != nil {
 		log.Println(err)
 		return
@@ -26,7 +32,7 @@ func main() {
 
 	bot.Debug = true
 
-	pool, err := db.InitDB("postgres://postgres:1234@localhost:5432/postgres?sslmode=disable")
+	pool, err := db.InitDB(cfg.DBConnect)
 	if err != nil {
 		log.Fatal(err)
 	}

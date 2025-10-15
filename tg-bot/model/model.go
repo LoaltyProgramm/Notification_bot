@@ -1,5 +1,10 @@
 package model
 
+type Cfg struct {
+	BotAPI string
+	DBConnect string
+}
+
 type Reminder struct {
 	ID           int
 	ChatID       int64
@@ -18,7 +23,6 @@ type Group struct {
 }
 
 type UserSession struct {
-	isStartBot      bool
 	Chat_ID         int64
 	State           State
 	UserText        string

@@ -13,7 +13,7 @@ type Manager struct {
 func NewManager(session map[int64]*model.UserSession) *Manager {
 	return &Manager{
 		session: session,
-		mu: &sync.Mutex{},
+		mu:      &sync.Mutex{},
 	}
 }
 

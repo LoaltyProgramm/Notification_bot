@@ -30,34 +30,5 @@ func InitDB(cfg string) (*pgxpool.Pool, error) {
 		return nil, errors.New("fatal ping DB")
 	}
 
-	createTableReminderQuery := `
-		CREATE TABLE IF NOT EXISTS reminder(
-			id SERIAL PRIMARY KEY,
-			chat_id BIGINT NOT NULL,
-			text TEXT NOT NULL,
-			type_reminder VARCHAR(32) NOT NULL,
-			week_day TEXT,
-			time VARCHAR(128) NOT NULL,
-			full_time VARCHAR(312) NOT NULL
-		);
-	`
-	_, err = pool.Exec(ctx, createTableReminderQuery)
-	if err != nil {
-		return nil, errors.New("fatal migration table reminder")
-	}
-
-	createTableGroupQuery := `
-		CREATE TABLE IF NOT EXISTS user_group(
-			id SERIAL PRIMARY KEY,
-			chat_id_group BIGINT NOT NULL,
-			user_id BIGINT NOT NULL,
-			title_group TEXT NOT NULL
-		);
-	`
-	_, err = pool.Exec(ctx, createTableGroupQuery)
-	if err != nil {
-		return nil, errors.New("fatal migration table group")
-	}
-
 	return pool, nil
 }

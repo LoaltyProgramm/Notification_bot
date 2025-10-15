@@ -108,7 +108,7 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 
 		session.IntervalRetry = false
 
-		session.State = "registred_final"
+		session.State = model.StateRegistredFinal
 		return
 	}
 
@@ -232,12 +232,10 @@ func handlerEmptyLists(h *Handler, update tgbotapi.Update, session *model.UserSe
 }
 
 func handlerAddReminder(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
-	// логика добавления в бд записи о напоминаниях
 	err := service.Createreminder(context.Background(), session.Reminder)
 	if err != nil {
 		log.Fatal(err)
 	}
-	//---------------------------------------------
 	session.State = "main_menu"
 	msg := tgbotapi.NewMessage(chatID, "Напоминание добавлено✅")
 	if _, err := h.Bot.Send(msg); err != nil {
@@ -351,10 +349,10 @@ func handlerWaitGroup(h *Handler, update tgbotapi.Update, session *model.UserSes
 	msg := tgbotapi.NewMessage(session.Group.UserID, fmt.Sprintf("Вы хотите добавить бота в группу?\nНазвание группы - %s", session.Group.TitleGroup))
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Добавить", "add"), //Callback доработать
+			tgbotapi.NewInlineKeyboardButtonData("Добавить", "add"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Отмена", "remove"), //Callback доработать
+			tgbotapi.NewInlineKeyboardButtonData("Отмена", "remove"),
 		),
 	)
 
@@ -454,7 +452,7 @@ func handlerErrorStatusAddGroup(h *Handler, update tgbotapi.Update, session *mod
 			session.RemoveMSG = 0
 		}
 	}
-	
+
 	msg := tgbotapi.NewMessage(chatID, "Для корректного добавления бота в группу, удалите его из группы куда добавили.\nДалее в главном меню нажмите кнопку - добавить бота. После чего добавьте обратно бота в нужную группу\nТак бот корректно добавиться в список!")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
