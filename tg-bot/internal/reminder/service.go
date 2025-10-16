@@ -64,3 +64,7 @@ func (s *ReminderService) RemoveGroup(ctx context.Context, id int64) error {
 func (s *ReminderService) ListTitleGroup(ctx context.Context, id int64) (string, error) {
 	return s.repo.GetTitleGroupForID(ctx, id)
 }
+
+func (s *ReminderService) ListGroup(ctx context.Context, id int64) (*model.Group, error) {
+	return s.repo.GetGroupForID(ctx, id)
+}

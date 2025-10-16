@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS reminder(
 	text TEXT NOT NULL,
 	type_reminder VARCHAR(32) NOT NULL,
 	week_day TEXT,
+	group_send_id BIGINT NOT NULL,
 	time VARCHAR(128) NOT NULL,
 	full_time VARCHAR(312) NOT NULL
 );
@@ -20,4 +21,6 @@ CREATE TABLE IF NOT EXISTS user_group(
 
 -- +goose Down
 -- +goose StatementBegin
+DELETE FROM reminder;
+DELETE FROM user_group;
 -- +goose StatementEnd

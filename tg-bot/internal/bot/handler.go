@@ -134,6 +134,7 @@ func (h *Handler) handleError(update tgbotapi.Update, session *model.UserSession
 	session.State = "main_menu"
 
 	msg := tgbotapi.NewMessage(chatID, "⚠️ Ошибка. Вас вернули в главное меню.")
+	log.Println("Перед отправкой сообщения об ошибке")
 	h.Bot.Send(msg)
 
 	handlerMainMenu(h, update, session, chatID, service)

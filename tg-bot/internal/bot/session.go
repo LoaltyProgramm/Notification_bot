@@ -24,6 +24,7 @@ func (m *Manager) Get(chatID int64) *model.UserSession {
 	if _, ok := m.session[chatID]; !ok {
 		m.session[chatID] = &model.UserSession{State: model.StateMainMenu, Chat_ID: chatID}
 		m.session[chatID].Group = &model.Group{}
+		m.session[chatID].Reminder = &model.Reminder{}
 	}
 
 	return m.session[chatID]

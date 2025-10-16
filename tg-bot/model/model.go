@@ -1,7 +1,7 @@
 package model
 
 type Cfg struct {
-	BotAPI string
+	BotAPI    string
 	DBConnect string
 }
 
@@ -11,6 +11,7 @@ type Reminder struct {
 	Text         string
 	TypeInterval string
 	WeekDay      string
+	GroupID      int64
 	Time         string
 	FullTime     string
 }
@@ -27,6 +28,8 @@ type UserSession struct {
 	State           State
 	UserText        string
 	Interval        string
+	SendGroupTitle  string
+	SendGroupId     int64
 	IntervalRetry   bool
 	Reminder        *Reminder
 	Group           *Group

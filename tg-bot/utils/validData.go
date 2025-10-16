@@ -14,9 +14,9 @@ var (
 	ERRORTYPEINTERVAL     = errors.New("incorrect data interval")
 )
 
-func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, error) {
-	intervalArr := strings.Split(interval, " ")
-	if len(interval) == 0 {
+func ParseIntervalData(session *model.UserSession) (*model.Reminder, error) {
+	intervalArr := strings.Split(session.Interval, " ")
+	if len(intervalArr) == 0 {
 		return nil, ERRORNOTNULLINTERVAL
 	}
 
@@ -62,10 +62,11 @@ func ParseIntervalData(chatID int64, text, interval string) (*model.Reminder, er
 	fullTime := strings.Join(intervalArr, " ")
 
 	reminder := model.Reminder{
-		ChatID:       chatID,
-		Text:         text,
+		ChatID:       session.Chat_ID,
+		Text:         session.UserText,
 		TypeInterval: typeInterval,
 		WeekDay:      weekDay,
+		GroupID: session.Reminder.GroupID,
 		Time:         intervalArr[3],
 		FullTime:     fullTime,
 	}

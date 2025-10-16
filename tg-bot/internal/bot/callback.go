@@ -203,4 +203,48 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			return
 		}
 	}
+
+	switch {
+	case strings.HasPrefix(callbackData, "group_registred_"):
+		deleteMsg := tgbotapi.NewDeleteMessage(callback.CallbackQuery.Message.Chat.ID, callback.CallbackQuery.Message.MessageID)
+		if _, err := bot.Request(deleteMsg); err != nil {
+			log.Println("Error request - ", err)
+			return
+		}
+
+		log.Println(callbackData)
+
+		idStr := strings.TrimPrefix(callbackData, "group_registred_")
+		log.Println(idStr)
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			log.Println("error atoi - ", err)
+			return
+		}
+
+		group, err := service.ListGroup(context.Background(), int64(id))
+		if err != nil {
+			log.Printf("error callback reminder_group_registred in func ListGroup: %v", err)
+		}
+
+		if group == nil {
+			log.Println("group nil")
+			return
+		}
+
+		log.Println(group)
+		log.Println(userSession.State)
+		// log.Println(userSession)
+		// log.Println(userSession.SendGroupId)
+		// log.Println(userSession.Reminder.GroupID)
+		// log.Println(userSession.Reminder.GroupID)
+
+		userSession.SendGroupId = int64(id)
+		userSession.SendGroupTitle = group.TitleGroup
+
+		userSession.Reminder.GroupID = group.GroupID
+		log.Println(userSession.Reminder.GroupID)
+
+		userSession.State = model.StateRegistredFinal
+	}
 }

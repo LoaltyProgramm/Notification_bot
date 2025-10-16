@@ -16,6 +16,7 @@ var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, sess
 	model.StateMainMenu:          handlerMainMenu,
 	model.StateRegistredText:     handlerRegistredText,
 	model.StateRegistredInterval: handlerRegistredInterval,
+	model.StateRegistredGroup:    handlerRegistredGroup,
 	model.StateRegistredFinal:    handlerRegistredFinal,
 	model.StateRegistredError:    handlerRegistredError,
 	model.StateIdle:              handlerIdle,
@@ -108,7 +109,7 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 
 		session.IntervalRetry = false
 
-		session.State = model.StateRegistredFinal
+		session.State = model.StateRegistredGroup
 		return
 	}
 
@@ -131,10 +132,10 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 	session.RemoveMSG = infoMSG.MessageID
 	session.RemoveMSGChatID = infoMSG.Chat.ID
 
-	session.State = "registred_final"
+	session.State = model.StateRegistredGroup
 }
 
-func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerRegistredGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	session.Interval = update.Message.Text
 
 	if session.RemoveMSGChatID != 0 && session.RemoveMSG != 0 {
@@ -148,8 +149,9 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.Us
 		}
 
 	}
+
 	var err error
-	session.Reminder, err = utils.ParseIntervalData(chatID, session.UserText, session.Interval)
+	_, err = utils.ParseIntervalData(session)
 	if err != nil {
 		log.Println(err)
 		session.State = "registred_error"
@@ -162,10 +164,83 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.Us
 		return
 	}
 
+	groups, err := service.ListGroups(context.Background(), session)
+	if err != nil {
+		log.Printf("Error handlerRegistredGroup in func ListGroups: %s", err)
+		return
+	}
+
+	if len(groups) == 0 {
+		session.State = model.StateMainMenu
+		msg := tgbotapi.NewMessage(chatID, "У вас нет групп, чтобы прикрепить напоминие к ней.\nСначала добавьте группу, чтобы пользоваться ботом.")
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("Добавить группу", "add_group"),
+			),
+		)
+
+		if _, err := h.Bot.Send(msg); err != nil {
+			log.Printf("Error handlerRegistredGroup in send empty group: %s", err)
+			return
+		}
+		return
+	}
+
+	var rows [][]tgbotapi.InlineKeyboardButton
+	for _, v := range groups {
+		btn := tgbotapi.NewInlineKeyboardButtonData(v.TitleGroup, fmt.Sprintf("group_registred_%d", v.ID))
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(btn))
+	}
+
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),
+	))
+
+	msg := tgbotapi.NewMessage(chatID, "Выберите группу, куда присылать напоминание:")
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("Sucsses")
+}
+
+func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+	if session.RemoveMSGChatID != 0 && session.RemoveMSG != 0 {
+		deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
+		if _, err := h.Bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		} else {
+			session.RemoveMSGChatID = 0
+			session.RemoveMSG = 0
+		}
+
+	}
+
+	var err error
+	session.Reminder, err = utils.ParseIntervalData(session)
+	if err != nil {
+		log.Println(err)
+		session.State = "registred_error"
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Не 1 правильный формат ввода интервала\nВведите интервал заново:")
+		if _, err := h.Bot.Send(msg); err != nil {
+			log.Println(err)
+			return
+		}
+		return
+	}
+
+	log.Println(session.Reminder.GroupID)
+
 	msg := tgbotapi.NewMessage(chatID,
-		fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s",
+		fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s\nОтправлять в группу:\n%v",
 			session.UserText,
-			session.Interval))
+			session.Interval,
+			session.SendGroupTitle))
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -186,7 +261,7 @@ func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.Us
 	session.Interval = update.Message.Text
 
 	var err error
-	session.Reminder, err = utils.ParseIntervalData(update.Message.Chat.ID, session.UserText, session.Interval)
+	session.Reminder, err = utils.ParseIntervalData(session)
 	if err != nil {
 		session.State = "registred_error"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Не 2 правильный формат ввода интервала\nВведите интервал заново:")
@@ -197,10 +272,13 @@ func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.Us
 		return
 	}
 
+	session.Reminder.GroupID = session.SendGroupId
+
 	msg := tgbotapi.NewMessage(chatID,
-		fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s",
+		fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s Отправлять в группу:\n%v",
 			session.UserText,
-			session.Interval))
+			session.Interval,
+			session.SendGroupId))
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(

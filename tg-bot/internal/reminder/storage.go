@@ -16,6 +16,7 @@ type Repository interface {
 	GetGroupsForUserID(ctx context.Context, userSession *model.UserSession) ([]*model.Group, error)
 	DeleteGroupForID(ctx context.Context, id int64) error
 	GetTitleGroupForID(ctx context.Context, id int64) (string, error)
+	GetGroupForID(ctx context.Context, id int64) (*model.Group, error)
 }
 
 type PGXRepository struct {
@@ -30,10 +31,10 @@ func NewRepository(pool *pgxpool.Pool) *PGXRepository {
 
 func (r *PGXRepository) Addreminder(ctx context.Context, rem *model.Reminder) error {
 	query := `
-		INSERT INTO reminder (chat_id, text, week_day, type_reminder, time, full_time) VALUES ($1, $2, $3, $4, $5, $6); 
+		INSERT INTO reminder (chat_id, text, week_day, type_reminder, group_send_id, time, full_time) VALUES ($1, $2, $3, $4, $5, $6, $7); 
 	`
 
-	if _, err := r.pool.Exec(ctx, query, rem.ChatID, rem.Text, rem.WeekDay, rem.TypeInterval, rem.Time, rem.FullTime); err != nil {
+	if _, err := r.pool.Exec(ctx, query, rem.ChatID, rem.Text, rem.WeekDay, rem.TypeInterval, rem.GroupID, rem.Time, rem.FullTime); err != nil {
 		return err
 	}
 
@@ -166,4 +167,18 @@ func (r *PGXRepository) GetTitleGroupForID(ctx context.Context, id int64) (strin
 	}
 
 	return title, nil
+}
+
+func (r *PGXRepository) GetGroupForID(ctx context.Context, id int64) (*model.Group, error) {
+	query := `
+		SELECT id, chat_id_group, user_id, title_group FROM user_group WHERE id = $1;
+	`
+
+	group := model.Group{}
+	err := r.pool.QueryRow(ctx, query, id).Scan(&group.ID, &group.GroupID, &group.UserID, &group.TitleGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	return &group, nil
 }
