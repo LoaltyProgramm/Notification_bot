@@ -30,6 +30,7 @@ type UserSession struct {
 	Interval        string
 	SendGroupTitle  string
 	SendGroupId     int64
+	SendGroupIdint  int64
 	IntervalRetry   bool
 	Reminder        *Reminder
 	Group           *Group

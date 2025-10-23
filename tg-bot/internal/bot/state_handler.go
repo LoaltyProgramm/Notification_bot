@@ -151,7 +151,7 @@ func handlerRegistredGroup(h *Handler, update tgbotapi.Update, session *model.Us
 	}
 
 	var err error
-	_, err = utils.ParseIntervalData(session)
+	session.Reminder, err = utils.ParseIntervalData(session)
 	if err != nil {
 		log.Println(err)
 		session.State = "registred_error"
@@ -224,15 +224,10 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.Us
 	session.Reminder, err = utils.ParseIntervalData(session)
 	if err != nil {
 		log.Println(err)
-		session.State = "registred_error"
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Не 1 правильный формат ввода интервала\nВведите интервал заново:")
-		if _, err := h.Bot.Send(msg); err != nil {
-			log.Println(err)
-			return
-		}
 		return
 	}
+
+	session.Reminder.GroupID = session.SendGroupIdint
 
 	log.Println(session.Reminder.GroupID)
 
@@ -271,7 +266,7 @@ func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.Us
 		}
 		return
 	}
-	
+
 	session.State = model.StateRegistredGroup
 	handlerRegistredGroup(h, update, session, chatID, service)
 }

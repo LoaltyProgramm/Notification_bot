@@ -240,6 +240,7 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 		// log.Println(userSession.Reminder.GroupID)
 
 		userSession.SendGroupId = int64(id)
+		userSession.SendGroupIdint = group.GroupID
 		userSession.SendGroupTitle = group.TitleGroup
 
 		userSession.Reminder.GroupID = group.GroupID
