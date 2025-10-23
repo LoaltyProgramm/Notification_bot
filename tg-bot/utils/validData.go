@@ -66,7 +66,6 @@ func ParseIntervalData(session *model.UserSession) (*model.Reminder, error) {
 		Text:         session.UserText,
 		TypeInterval: typeInterval,
 		WeekDay:      weekDay,
-		GroupID: session.Reminder.GroupID,
 		Time:         intervalArr[3],
 		FullTime:     fullTime,
 	}

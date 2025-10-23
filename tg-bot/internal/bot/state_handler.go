@@ -259,11 +259,11 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.Us
 
 func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
 	session.Interval = update.Message.Text
-
+	log.Println(session.Interval)
 	var err error
 	session.Reminder, err = utils.ParseIntervalData(session)
+	log.Println(session.Reminder)
 	if err != nil {
-		session.State = "registred_error"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Не 2 правильный формат ввода интервала\nВведите интервал заново:")
 		if _, err := h.Bot.Send(msg); err != nil {
 			log.Println(err)
@@ -271,25 +271,9 @@ func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.Us
 		}
 		return
 	}
-
-	session.Reminder.GroupID = session.SendGroupId
-
-	msg := tgbotapi.NewMessage(chatID,
-		fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s Отправлять в группу:\n%v",
-			session.UserText,
-			session.Interval,
-			session.SendGroupId))
-	msg.ParseMode = "HTML"
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Подтвержаю", "success_data"),
-			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "back"),
-		),
-	)
-	if _, err := h.Bot.Send(msg); err != nil {
-		log.Println(err)
-		return
-	}
+	
+	session.State = model.StateRegistredGroup
+	handlerRegistredGroup(h, update, session, chatID, service)
 }
 
 func handlerIdle(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
