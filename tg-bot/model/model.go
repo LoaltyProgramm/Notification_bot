@@ -3,6 +3,7 @@ package model
 type Cfg struct {
 	BotAPI    string
 	DBConnect string
+	BotPass   string
 }
 
 type Reminder struct {
@@ -12,6 +13,7 @@ type Reminder struct {
 	TypeInterval string
 	WeekDay      string
 	GroupID      int64
+	TitleGroup   string
 	Time         string
 	FullTime     string
 }
@@ -24,6 +26,7 @@ type Group struct {
 }
 
 type UserSession struct {
+	ValidUser       bool
 	Chat_ID         int64
 	State           State
 	UserText        string

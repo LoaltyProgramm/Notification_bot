@@ -9,9 +9,14 @@ import (
 func CommandHandler(command string, chatID int64, userSession *model.UserSession, bot tgbotapi.BotAPI) {
 	switch command {
 	case "start":
-		msg := tgbotapi.NewMessage(chatID, "Привет👋\nДанный бот позволяет добавить напоминания к группе")
+		if userSession.ValidUser {
+			userSession.State = model.StateMainMenu
+			return
+		}
 
-		userSession.State = "main_menu"
+		msg := tgbotapi.NewMessage(chatID, "Введите пароль от бота:")
+
+		userSession.State = "login_user"
 		if _, err := bot.Send(msg); err != nil {
 			return
 		}

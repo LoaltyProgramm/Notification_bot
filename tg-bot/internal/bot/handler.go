@@ -24,7 +24,7 @@ func NewHandler(bot *tgbotapi.BotAPI, session *Manager, serviceReminder *reminde
 	}
 }
 
-func (h *Handler) UpdateHandler(update tgbotapi.Update) {
+func (h *Handler) UpdateHandler(update tgbotapi.Update, cfg *model.Cfg) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := fmt.Errorf("panic: %v", r)
@@ -37,7 +37,7 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 			}
 			userSession := h.Session.Get(chatID)
 
-			h.handleError(update, userSession, chatID, h.ServiceReminder, err)
+			h.handleError(update, userSession, chatID, h.ServiceReminder, err, cfg)
 		}
 	}()
 
@@ -52,7 +52,7 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 			if newStatus != "kicked" && newStatus != "left" {
 				userSession.State = model.StateErrorAddGroup
 				if userHandler, ok := StateHandler[userSession.State]; ok {
-					userHandler(h, update, userSession, userID, h.ServiceReminder)
+					userHandler(h, update, userSession, userID, h.ServiceReminder, cfg)
 				} else {
 					log.Println("ERORR")
 					return
@@ -66,7 +66,7 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 			switch newStatus {
 			case "member":
 				if userHandler, ok := StateHandler[userSession.State]; ok {
-					userHandler(h, update, userSession, userID, h.ServiceReminder)
+					userHandler(h, update, userSession, userID, h.ServiceReminder, cfg)
 				} else {
 					log.Println("ERORR")
 					return
@@ -77,7 +77,7 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 				idGroup := update.MyChatMember.Chat.ID
 				userSession.RemoveGroup = idGroup
 				if userHandler, ok := StateHandler[userSession.State]; ok {
-					userHandler(h, update, userSession, userID, h.ServiceReminder)
+					userHandler(h, update, userSession, userID, h.ServiceReminder, cfg)
 				} else {
 					log.Println("ERORR")
 					return
@@ -101,6 +101,26 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 
 	userSession := h.Session.Get(chatID)
 
+	if !userSession.ValidUser {
+		if userSession.State != model.StateLoginUser {
+			userSession.State = model.StateReturnLogin
+			if userHandler, ok := StateHandler[userSession.State]; ok {
+				userHandler(h, update, userSession, chatID, h.ServiceReminder, cfg)
+			} else {
+				log.Println("ERORR")
+				return
+			}
+			return
+		}
+	}
+
+	// var chatID int64
+	// if update.Message != nil {
+	// 	chatID = update.Message.Chat.ID
+	// } else if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
+	// 	chatID = update.CallbackQuery.Message.Chat.ID
+	// }
+
 	//обработка команд
 	if update.Message != nil && update.Message.IsCommand() {
 		CommandHandler(update.Message.Command(), chatID, userSession, *h.Bot)
@@ -117,17 +137,33 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update) {
 		CallbackHandlers(update.CallbackQuery.Data, update, h.Bot, userSession, chatID, h.ServiceReminder)
 	}
 
-	if UserStateFunc, ok := StateHandler[userSession.State]; ok {
-		UserStateFunc(h, update, userSession, chatID, h.ServiceReminder)
-	} else { //переделать
-		msg := tgbotapi.NewMessage(chatID, "Нету данного колбека")
-		if _, err := h.Bot.Send(msg); err != nil {
-			log.Println("Error callback")
+	if !userSession.ValidUser {
+		if userSession.State != model.StateLoginUser {
+			return
+		}
+
+		if UserStateFunc, ok := StateHandler[userSession.State]; ok {
+			UserStateFunc(h, update, userSession, chatID, h.ServiceReminder, cfg)
+		} else { //переделать
+			msg := tgbotapi.NewMessage(chatID, "Нету данного колбека")
+			if _, err := h.Bot.Send(msg); err != nil {
+				log.Println("Error callback")
+			}
+		}
+	} else if userSession.ValidUser {
+		if UserStateFunc, ok := StateHandler[userSession.State]; ok {
+			UserStateFunc(h, update, userSession, chatID, h.ServiceReminder, cfg)
+		} else { //переделать
+			msg := tgbotapi.NewMessage(chatID, "Нету данного колбека")
+			if _, err := h.Bot.Send(msg); err != nil {
+				log.Println("Error callback")
+			}
 		}
 	}
+
 }
 
-func (h *Handler) handleError(update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, err error) {
+func (h *Handler) handleError(update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, err error, cfg *model.Cfg) {
 	log.Printf("Ошибка: %v", err)
 
 	// бизнес-логика обработки ошибок
@@ -137,5 +173,5 @@ func (h *Handler) handleError(update tgbotapi.Update, session *model.UserSession
 	log.Println("Перед отправкой сообщения об ошибке")
 	h.Bot.Send(msg)
 
-	handlerMainMenu(h, update, session, chatID, service)
+	handlerMainMenu(h, update, session, chatID, service, cfg)
 }

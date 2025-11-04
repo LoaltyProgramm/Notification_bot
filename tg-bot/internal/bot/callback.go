@@ -19,8 +19,33 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 			callback.CallbackQuery.Message.Chat.ID,
 			callback.CallbackQuery.Message.MessageID,
 		)
-		if _, err := bot.Request(deleteMsg); err != nil {
-			log.Println(err)
+
+		if deleteMsg != (tgbotapi.DeleteMessageConfig{}) {
+			if _, err := bot.Request(deleteMsg); err != nil {
+				log.Println(err)
+				return
+			}
+		}
+
+		groups, err := service.ListGroups(context.Background(), userSession)
+		if err != nil {
+			log.Printf("Error handlerRegistredGroup in func ListGroups: %s", err)
+			return
+		}
+
+		if len(groups) == 0 {
+			userSession.State = model.StateIdle
+			msg := tgbotapi.NewMessage(chatID, "У вас нет групп, чтобы прикрепить напоминие к ней.\nСначала добавьте группу, чтобы пользоваться ботом.")
+			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Добавить группу", "add_group"),
+				),
+			)
+
+			if _, err := bot.Send(msg); err != nil {
+				log.Printf("Error handlerRegistredGroup in send empty group: %s", err)
+				return
+			}
 			return
 		}
 
@@ -136,6 +161,17 @@ func CallbackHandlers(callbackData string, callback tgbotapi.Update, bot *tgbota
 		}
 
 		userSession.State = model.StateFinalAddGroup
+	case "remove":
+		deleteMsg := tgbotapi.NewDeleteMessage(
+			callback.CallbackQuery.Message.Chat.ID,
+			callback.CallbackQuery.Message.MessageID,
+		)
+		if _, err := bot.Request(deleteMsg); err != nil {
+			log.Println(err)
+			return
+		}
+
+		userSession.State = model.StateMainMenu
 	case "all_group":
 		deleteMsg := tgbotapi.NewDeleteMessage(
 			callback.CallbackQuery.Message.Chat.ID,

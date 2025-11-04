@@ -31,10 +31,10 @@ func NewRepository(pool *pgxpool.Pool) *PGXRepository {
 
 func (r *PGXRepository) Addreminder(ctx context.Context, rem *model.Reminder) error {
 	query := `
-		INSERT INTO reminder (chat_id, text, week_day, type_reminder, group_send_id, time, full_time) VALUES ($1, $2, $3, $4, $5, $6, $7); 
+		INSERT INTO reminder (chat_id, text, week_day, type_reminder, group_send_id, group_send_title, time, full_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8); 
 	`
 
-	if _, err := r.pool.Exec(ctx, query, rem.ChatID, rem.Text, rem.WeekDay, rem.TypeInterval, rem.GroupID, rem.Time, rem.FullTime); err != nil {
+	if _, err := r.pool.Exec(ctx, query, rem.ChatID, rem.Text, rem.WeekDay, rem.TypeInterval, rem.GroupID, rem.TitleGroup, rem.Time, rem.FullTime); err != nil {
 		return err
 	}
 
@@ -71,21 +71,23 @@ func (r *PGXRepository) GetReminders(ctx context.Context, userSession *model.Use
 
 func (r *PGXRepository) GetReminderForID(ctx context.Context, id int) (*model.Reminder, error) {
 	query := `
-		SELECT text, full_time FROM reminder WHERE id = $1;
+		SELECT text, full_time, group_send_title FROM reminder WHERE id = $1;
 	`
 
 	var text string
 	var fullTime string
+	var titleGroup string
 
-	err := r.pool.QueryRow(ctx, query, id).Scan(&text, &fullTime)
+	err := r.pool.QueryRow(ctx, query, id).Scan(&text, &fullTime, &titleGroup)
 	if err != nil {
 		return nil, err
 	}
 
 	reminder := &model.Reminder{
-		ID:       id,
-		Text:     text,
-		FullTime: fullTime,
+		ID:         id,
+		Text:       text,
+		FullTime:   fullTime,
+		TitleGroup: titleGroup,
 	}
 
 	return reminder, nil

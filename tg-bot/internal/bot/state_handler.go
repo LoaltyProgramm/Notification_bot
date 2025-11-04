@@ -12,7 +12,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService){
+var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg){
+	model.StateReturnLogin:       handlerReturnLogin,
+	model.StateLoginUser:         handlerLoginUser,
 	model.StateMainMenu:          handlerMainMenu,
 	model.StateRegistredText:     handlerRegistredText,
 	model.StateRegistredInterval: handlerRegistredInterval,
@@ -32,7 +34,39 @@ var StateHandler = map[model.State]func(h *Handler, update tgbotapi.Update, sess
 	model.StateErrorAddGroup:     handlerErrorStatusAddGroup,
 }
 
-func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerReturnLogin(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
+	msg := tgbotapi.NewMessage(chatID, "Введите пароль, чтобы воспользоваться ботом:")
+	if _, err := h.Bot.Send(msg); err != nil {
+		return
+	}
+
+	session.State = model.StateLoginUser
+	log.Println(session.State)
+}
+
+func handlerLoginUser(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
+	psswd := update.Message.Text
+	log.Println(psswd)
+	if psswd == "" || psswd == "/start" {
+		return
+	}
+
+	if psswd != cfg.BotPass {
+		msg := tgbotapi.NewMessage(chatID, "Не правильный пароль\nПопробуйте снова:")
+		if _, err := h.Bot.Send(msg); err != nil {
+			log.Println(err)
+			return
+		}
+
+		return
+	}
+
+	session.State = model.StateMainMenu
+	session.ValidUser = true
+	handlerMainMenu(h, update, session, chatID, service, cfg)
+}
+
+func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	msg := tgbotapi.NewMessage(chatID, "<b>Выберите функцию👇</b>")
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -55,7 +89,7 @@ func handlerMainMenu(h *Handler, update tgbotapi.Update, session *model.UserSess
 	session.RemoveMSGChatID = infoMSG.Chat.ID
 }
 
-func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	msg := tgbotapi.NewMessage(chatID, "<b>Введите текст напоминания✍️</b>")
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -72,10 +106,10 @@ func handlerRegistredText(h *Handler, update tgbotapi.Update, session *model.Use
 	session.RemoveMSG = infoMSG.MessageID
 	session.RemoveMSGChatID = infoMSG.Chat.ID
 
-	session.State = "registred_interval"
+	session.State = model.StateRegistredInterval
 }
 
-func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	if session.RemoveMSGChatID != 0 && session.RemoveMSG != 0 {
 		deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
 		if _, err := h.Bot.Request(deleteMsg); err != nil {
@@ -135,7 +169,7 @@ func handlerRegistredInterval(h *Handler, update tgbotapi.Update, session *model
 	session.State = model.StateRegistredGroup
 }
 
-func handlerRegistredGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerRegistredGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	session.Interval = update.Message.Text
 
 	if session.RemoveMSGChatID != 0 && session.RemoveMSG != 0 {
@@ -170,22 +204,6 @@ func handlerRegistredGroup(h *Handler, update tgbotapi.Update, session *model.Us
 		return
 	}
 
-	if len(groups) == 0 {
-		session.State = model.StateMainMenu
-		msg := tgbotapi.NewMessage(chatID, "У вас нет групп, чтобы прикрепить напоминие к ней.\nСначала добавьте группу, чтобы пользоваться ботом.")
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Добавить группу", "add_group"),
-			),
-		)
-
-		if _, err := h.Bot.Send(msg); err != nil {
-			log.Printf("Error handlerRegistredGroup in send empty group: %s", err)
-			return
-		}
-		return
-	}
-
 	var rows [][]tgbotapi.InlineKeyboardButton
 	for _, v := range groups {
 		btn := tgbotapi.NewInlineKeyboardButtonData(v.TitleGroup, fmt.Sprintf("group_registred_%d", v.ID))
@@ -207,7 +225,7 @@ func handlerRegistredGroup(h *Handler, update tgbotapi.Update, session *model.Us
 	log.Println("Sucsses")
 }
 
-func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	if session.RemoveMSGChatID != 0 && session.RemoveMSG != 0 {
 		deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
 		if _, err := h.Bot.Request(deleteMsg); err != nil {
@@ -228,8 +246,10 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.Us
 	}
 
 	session.Reminder.GroupID = session.SendGroupIdint
+	session.Reminder.TitleGroup = session.SendGroupTitle
 
 	log.Println(session.Reminder.GroupID)
+	log.Println(session.Reminder.TitleGroup)
 
 	msg := tgbotapi.NewMessage(chatID,
 		fmt.Sprintf("<b>Подтверждаете напоминание?</b>\nТекст:\n%s\nИнтервал:\n%s\nОтправлять в группу:\n%v",
@@ -252,7 +272,7 @@ func handlerRegistredFinal(h *Handler, update tgbotapi.Update, session *model.Us
 	}
 }
 
-func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	session.Interval = update.Message.Text
 	log.Println(session.Interval)
 	var err error
@@ -268,14 +288,14 @@ func handlerRegistredError(h *Handler, update tgbotapi.Update, session *model.Us
 	}
 
 	session.State = model.StateRegistredGroup
-	handlerRegistredGroup(h, update, session, chatID, service)
+	handlerRegistredGroup(h, update, session, chatID, service, cfg)
 }
 
-func handlerIdle(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerIdle(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	return
 }
 
-func handlerEmptyLists(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerEmptyLists(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	msg := tgbotapi.NewMessage(chatID, "Список пуст\nПополняй скорее его)")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -288,7 +308,7 @@ func handlerEmptyLists(h *Handler, update tgbotapi.Update, session *model.UserSe
 	}
 }
 
-func handlerAddReminder(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerAddReminder(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	err := service.Createreminder(context.Background(), session.Reminder)
 	if err != nil {
 		log.Fatal(err)
@@ -300,10 +320,10 @@ func handlerAddReminder(h *Handler, update tgbotapi.Update, session *model.UserS
 		return
 	}
 
-	handlerMainMenu(h, update, session, chatID, service)
+	handlerMainMenu(h, update, session, chatID, service, cfg)
 }
 
-func handlerAllLists(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerAllLists(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	reminders, err := service.ListRemindersForChatID(context.Background(), session)
 	if err != nil {
 		log.Println(err)
@@ -312,7 +332,7 @@ func handlerAllLists(h *Handler, update tgbotapi.Update, session *model.UserSess
 
 	if len(reminders) <= 0 {
 		session.State = model.StateEmptyLists
-		handlerEmptyLists(h, update, session, chatID, service)
+		handlerEmptyLists(h, update, session, chatID, service, cfg)
 		return
 	}
 
@@ -335,11 +355,11 @@ func handlerAllLists(h *Handler, update tgbotapi.Update, session *model.UserSess
 		return
 	}
 
-	handlerIdle(h, update, session, chatID, service)
+	handlerIdle(h, update, session, chatID, service, cfg)
 }
 
-func handlerList(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
-	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Текст:\n%s\n\nИнтервал:\n%s", session.Reminder.Text, session.Reminder.FullTime))
+func handlerList(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
+	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Текст:\n%s\n\nИнтервал:\n%s\n\nГруппа:\n%s", session.Reminder.Text, session.Reminder.FullTime, session.Reminder.TitleGroup))
 	idStr := strconv.Itoa(session.Reminder.ID)
 	log.Println(session.Reminder)
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -357,7 +377,7 @@ func handlerList(h *Handler, update tgbotapi.Update, session *model.UserSession,
 	}
 }
 
-func handlerAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	msg := tgbotapi.NewMessage(chatID, "Добавьте бота в группу.\nОжидаем получение информации...")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -380,7 +400,7 @@ func handlerAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSess
 
 }
 
-func handlerWaitGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerWaitGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	if update.MyChatMember == nil {
 		return
 	}
@@ -419,7 +439,7 @@ func handlerWaitGroup(h *Handler, update tgbotapi.Update, session *model.UserSes
 	}
 
 }
-func handlerFinalAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerFinalAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	err := service.CreateGroup(context.Background(), session)
 	if err != nil {
 		log.Println(err)
@@ -434,10 +454,10 @@ func handlerFinalAddGroup(h *Handler, update tgbotapi.Update, session *model.Use
 
 	session.State = model.StateMainMenu
 
-	handlerMainMenu(h, update, session, chatID, service)
+	handlerMainMenu(h, update, session, chatID, service, cfg)
 }
 
-func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	log.Println("Start handler all group")
 	groups, err := service.ListGroups(context.Background(), session)
 	if err != nil {
@@ -447,7 +467,7 @@ func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSess
 
 	if len(groups) == 0 {
 		session.State = model.StateEmptyLists
-		handlerEmptyLists(h, update, session, chatID, service)
+		handlerEmptyLists(h, update, session, chatID, service, cfg)
 		return
 	}
 
@@ -470,10 +490,10 @@ func handlerAllGroup(h *Handler, update tgbotapi.Update, session *model.UserSess
 		return
 	}
 
-	handlerIdle(h, update, session, chatID, service)
+	handlerIdle(h, update, session, chatID, service, cfg)
 }
 
-func handlerRemoveGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerRemoveGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	titleGroup, err := h.ServiceReminder.ListTitleGroup(context.Background(), session.RemoveGroup)
 	if err != nil {
 		log.Println(err)
@@ -498,7 +518,7 @@ func handlerRemoveGroup(h *Handler, update tgbotapi.Update, session *model.UserS
 	}
 }
 
-func handlerErrorStatusAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService) {
+func handlerErrorStatusAddGroup(h *Handler, update tgbotapi.Update, session *model.UserSession, chatID int64, service *reminder.ReminderService, cfg *model.Cfg) {
 	if session.RemoveMSG != 0 && session.RemoveMSGChatID != 0 {
 		deleteMsg := tgbotapi.NewDeleteMessage(session.RemoveMSGChatID, session.RemoveMSG)
 		if _, err := h.Bot.Request(deleteMsg); err != nil {

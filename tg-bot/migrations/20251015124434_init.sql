@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS reminder(
 	type_reminder VARCHAR(32) NOT NULL,
 	week_day TEXT,
 	group_send_id BIGINT NOT NULL,
+	group_send_title TEXT NOT NULL,
 	time VARCHAR(128) NOT NULL,
 	full_time VARCHAR(312) NOT NULL
 );
@@ -16,6 +17,12 @@ CREATE TABLE IF NOT EXISTS user_group(
 	chat_id_group BIGINT NOT NULL,
 	user_id BIGINT NOT NULL,
 	title_group TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS admin_user(
+	id SERIAL PRIMARY KEY,
+	user_id BIGINT, 
+	password VARCHAR(128) NOT NULL
 );
 -- +goose StatementEnd
 

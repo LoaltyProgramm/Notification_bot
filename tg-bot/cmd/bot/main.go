@@ -50,6 +50,6 @@ func main() {
 	updates := bot.GetUpdatesChan(u)
 
 	for update := range updates {
-		handler.UpdateHandler(update)
+		handler.UpdateHandler(update, cfg)
 	}
 }

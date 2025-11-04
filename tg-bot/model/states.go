@@ -3,6 +3,8 @@ package model
 type State string
 
 const (
+	StateReturnLogin       State = "return_login"
+	StateLoginUser         State = "login_user"
 	StateMainMenu          State = "main_menu"
 	StateRegistredText     State = "registred_text"
 	StateRegistredInterval State = "registred_interval"
