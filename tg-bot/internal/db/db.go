@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,5 +31,37 @@ func InitDB(cfg string) (*pgxpool.Pool, error) {
 		return nil, errors.New("fatal ping DB")
 	}
 
+	err = CheckMigration(ctx, pool)
+	if err != nil {
+		return nil, err
+	}
+
 	return pool, nil
+}
+
+func CheckMigration(ctx context.Context, db *pgxpool.Pool) error {
+	requiaredTables := []string{
+		"reminder",
+		"user_group",
+	}
+
+	for _, table := range requiaredTables {
+		var exists bool
+		query := `
+			SELECT EXISTS (
+				SELECT 1 FROM information_schema.tables
+				WHERE table_schema = 'public' AND table_name = $1
+			)
+		`
+		err := db.QueryRow(ctx, query, table).Scan(&exists)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return fmt.Errorf("table '%s' does not exist", table)
+		}
+	}
+
+	return nil
 }

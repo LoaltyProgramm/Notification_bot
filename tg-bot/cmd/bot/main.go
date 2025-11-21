@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"tg-app/config"
 	tg_internal "tg-app/internal/bot"
@@ -38,6 +40,15 @@ func main() {
 	}
 
 	defer pool.Close()
+
+	ticker := time.NewTicker(1 * time.Minute)
+
+	go func() {
+		for range ticker.C {
+			db.CheckReminderSend(context.Background(), pool, bot)
+			log.Println("Запрос сделан!")
+		}
+	}()
 
 	repo := reminder.NewRepository(pool)
 	reminderService := reminder.NewreminderService(repo)

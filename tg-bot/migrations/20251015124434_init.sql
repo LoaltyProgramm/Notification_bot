@@ -18,12 +18,6 @@ CREATE TABLE IF NOT EXISTS user_group(
 	user_id BIGINT NOT NULL,
 	title_group TEXT NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS admin_user(
-	id SERIAL PRIMARY KEY,
-	user_id BIGINT, 
-	password VARCHAR(128) NOT NULL
-);
 -- +goose StatementEnd
 
 -- +goose Down

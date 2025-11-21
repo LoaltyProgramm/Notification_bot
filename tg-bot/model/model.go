@@ -41,3 +41,8 @@ type UserSession struct {
 	RemoveMSG       int
 	RemoveMSGChatID int64
 }
+
+type ResponseReminderSendGroup struct {
+	Text string
+	GroupSendId int64
+}

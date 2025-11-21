@@ -45,6 +45,17 @@ func ParseIntervalData(session *model.UserSession) (*model.Reminder, error) {
 
 	validWeekOfDay := []string{"понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"}
 
+	engWeekday := map[string]string{
+		"понедельник": "Monday",
+		"вторник":     "Tuesday",
+		"среда":       "Wednesday",
+		"четверг":     "Thursday",
+		"пятница":     "Friday",
+		"суббота":     "Saturday",
+		"воскресенье": "Sunday",
+		"день":        "day",
+	}
+
 	var typeInterval string
 	if weekDay == "день" {
 		typeInterval = "day"
@@ -65,7 +76,7 @@ func ParseIntervalData(session *model.UserSession) (*model.Reminder, error) {
 		ChatID:       session.Chat_ID,
 		Text:         session.UserText,
 		TypeInterval: typeInterval,
-		WeekDay:      weekDay,
+		WeekDay:      engWeekday[weekDay],
 		Time:         intervalArr[3],
 		FullTime:     fullTime,
 	}
