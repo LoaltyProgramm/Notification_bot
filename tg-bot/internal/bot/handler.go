@@ -114,13 +114,6 @@ func (h *Handler) UpdateHandler(update tgbotapi.Update, cfg *model.Cfg) {
 		}
 	}
 
-	// var chatID int64
-	// if update.Message != nil {
-	// 	chatID = update.Message.Chat.ID
-	// } else if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
-	// 	chatID = update.CallbackQuery.Message.Chat.ID
-	// }
-
 	//обработка команд
 	if update.Message != nil && update.Message.IsCommand() {
 		CommandHandler(update.Message.Command(), chatID, userSession, *h.Bot)

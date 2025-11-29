@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    container_name: bot_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - botnet
+
+  migrations:
+    image: ivan202/goose
+    container_name: bot_migrations
+    depends_on:
+      - db
+    volumes:
+      - ./migrations:/migrations
+    environment:
+      GOOSE_DRIVER: ${GOOSE_DRIVER}
+      GOOSE_DBSTRING: ${GOOSE_DBSTRING}
+    command: ["goose", "up", "latest", "-dir", "/migrations"]
+    restart: "no"
+    networks:
+      - botnet
+
+  bot:
+    image: ivan202/yourbot:latest   
+    container_name: tg_bot
+    depends_on:
+      - db
+      - migrations
+    env_file:
+      - .env
+    restart: always
+    networks:
+      - botnet
+
+volumes:
+  pgdata:
+
+networks:
+  botnet:

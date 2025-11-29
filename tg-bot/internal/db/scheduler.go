@@ -47,6 +47,7 @@ func CheckReminderSend(ctx context.Context, db *pgxpool.Pool, bot *telebotapi.Bo
 		for _, r := range response {
 			msg := telebotapi.NewMessage(r.GroupSendId, r.Text)
 			bot.Send(msg)
+			log.Printf("Отправлено сообщение %s в группу %d", r.Text, r.GroupSendId)
 		}
 	}
 }

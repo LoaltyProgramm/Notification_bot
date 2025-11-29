@@ -12,14 +12,14 @@ import (
 	"tg-app/model"
 
 	telebotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/joho/godotenv"
+	//"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		log.Fatal(err)
-	}
+	// err := godotenv.Load("../../.env")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	cfg, err := config.NewConfig()
 	if err != nil {
@@ -46,7 +46,6 @@ func main() {
 	go func() {
 		for range ticker.C {
 			db.CheckReminderSend(context.Background(), pool, bot)
-			log.Println("Запрос сделан!")
 		}
 	}()
 

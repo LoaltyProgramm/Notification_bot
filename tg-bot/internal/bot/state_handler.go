@@ -530,7 +530,7 @@ func handlerErrorStatusAddGroup(h *Handler, update tgbotapi.Update, session *mod
 		}
 	}
 
-	msg := tgbotapi.NewMessage(chatID, "Для корректного добавления бота в группу, удалите его из группы куда добавили.\nДалее в главном меню нажмите кнопку - добавить бота. После чего добавьте обратно бота в нужную группу\nТак бот корректно добавиться в список!")
+	msg := tgbotapi.NewMessage(chatID, "Для корректного добавления бота в группу, удалите его из группы куда добавили.\nДалее в главном меню нажмите кнопку - добавить группу. После чего добавьте обратно бота в нужную группу\nТак бот корректно добавиться в список!")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Главное меню", "redirect_main_menu"),

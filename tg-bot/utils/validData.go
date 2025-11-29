@@ -72,12 +72,22 @@ func ParseIntervalData(session *model.UserSession) (*model.Reminder, error) {
 
 	fullTime := strings.Join(intervalArr, " ")
 
+	lenTime := strings.Split(intervalArr[3], ":")
+	var hours string
+	var time string
+	if len(lenTime[0]) != 2 {
+		hours = "0" + lenTime[0]
+		time = hours + ":" + lenTime[1]
+	} else {
+		time = intervalArr[3]
+	}
+
 	reminder := model.Reminder{
 		ChatID:       session.Chat_ID,
 		Text:         session.UserText,
 		TypeInterval: typeInterval,
 		WeekDay:      engWeekday[weekDay],
-		Time:         intervalArr[3],
+		Time:         time,
 		FullTime:     fullTime,
 	}
 
